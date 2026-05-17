@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="form-card">
+    <h1 style="margin-bottom: 20px;">Admin Dashboard</h1>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px;">
+        <div class="post-card" style="text-align: center; margin: 0; padding: 15px;">
+            <h3 style="color: var(--primary); font-size: 2rem; margin-bottom: 5px;">{{ stats.users }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Usuarios</p>
+        </div>
+        <div class="post-card" style="text-align: center; margin: 0; padding: 15px;">
+            <h3 style="color: var(--secondary); font-size: 2rem; margin-bottom: 5px;">{{ stats.posts }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Posts</p>
+        </div>
+        <div class="post-card" style="text-align: center; margin: 0; padding: 15px;">
+            <h3 style="color: var(--success); font-size: 2rem; margin-bottom: 5px;">{{ stats.comments }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Comentarios</p>
+        </div>
+        <div class="post-card" style="text-align: center; margin: 0; padding: 15px;">
+            <h3 style="color: var(--danger); font-size: 2rem; margin-bottom: 5px;">{{ stats.blocked }}</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Bloqueados</p>
+        </div>
+    </div>
+
+    <h2 style="margin-bottom: 15px;">Gestión de Usuarios</h2>
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.05);">
+                    <th style="padding: 12px; color: var(--text-muted);">Usuario</th>
+                    <th style="padding: 12px; color: var(--text-muted);">Email</th>
+                    <th style="padding: 12px; color: var(--text-muted);">Estado</th>
+                    <th style="padding: 12px; color: var(--text-muted);">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in all_users %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 12px; display: flex; align-items: center; gap: 10px;">
+                        <img src="{{ u.profile_image }}" class="avatar-small" style="width: 32px; height: 32px;">
+                        <a href="/profile/{{ u._id }}">{{ u.username }}</a>
+                    </td>
+                    <td style="padding: 12px; color: var(--text-muted);">{{ u.email }}</td>
+                    <td style="padding: 12px;">
+                        {% if u.state == "blocked" %}
+                            <span style="background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 4px 8px; border-radius: 12px; font-size: 0.8rem;">Bloqueado</span>
+                        {% else %}
+                            <span style="background: rgba(16, 185, 129, 0.2); color: var(--success); padding: 4px 8px; border-radius: 12px; font-size: 0.8rem;">Activo</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 12px;">
+                        <form action="/admin/toggle-block/{{ u._id }}" method="post" style="display: inline;">
+                            {% if u.state == "blocked" %}
+                                <button type="submit" class="btn-success" style="padding: 6px 10px; font-size: 0.85rem;">Desbloquear</button>
+                            {% else %}
+                                <button type="submit" class="btn-danger" style="padding: 6px 10px; font-size: 0.85rem;">Bloquear</button>
+                            {% endif %}
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <a href="/" class="btn-primary" style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border);">← Volver al inicio</a>
+    </div>
+</div>
+
+{% endblock %}

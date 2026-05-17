@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+motor
+pymongo
+jinja2
+python-multipart
+passlib
+bcrypt
+pytz
+httpx
+python-dotenv
+itsdangerous

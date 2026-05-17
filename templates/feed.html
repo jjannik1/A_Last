@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Feed aleatorio</h2>
+
+{% if posts %}
+    {% for post in posts %}
+    <div class="post-card" id="post-{{ post._id }}">
+
+        <!-- Usuario y perfil -->
+        <div class="post-header">
+            <img src="{{ post.profile_image if post.profile_image else '/static/default.png' }}" class="avatar-small">
+            <div>
+                <strong>{{ post.username }}</strong>
+                <div class="date">{{ post.creacionDate.strftime("%d/%m/%Y %H:%M") }}</div>
+            </div>
+        </div>
+
+        <!-- Texto -->
+        <p class="post-text">{{ post.text }}</p>
+
+        <!-- Imágenes -->
+        {% if post.images %}
+        <div class="post-media-images">
+            {% for img in post.images %}
+                <img src="{{ img }}" class="post-image">
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Videos -->
+        {% if post.videos %}
+        <div class="post-media-videos">
+            {% for vid in post.videos %}
+                <video controls class="post-image">
+                    <source src="{{ vid }}">
+                    Tu navegador no soporta video.
+                </video>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Likes y comentarios -->
+        <div class="post-actions">
+            <span class="like-btn {% if request.session.user and request.session.user.id in post.likes %}liked{% endif %}" data-post-id="{{ post._id }}">
+                ❤️ <span class="likes-count">{{ post.likes|length }}</span>
+            </span>
+            <span onclick="toggleComments('{{ post._id }}')" class="comment-btn">
+                💬 {{ post.comments|length }}
+            </span>
+        </div>
+
+    </div>
+    {% endfor %}
+{% else %}
+    <p>No hay posts disponibles para mostrar.</p>
+{% endif %}
+
+{% endblock %}

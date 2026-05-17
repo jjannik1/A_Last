@@ -1,0 +1,47 @@
+Quiero que me generas un wireframe para mi proyecto, el nav y el footer van a ser casi siempre iguales
+si el usuario no esta registrado, saldra en el navbar (derecha) boton login y registrar, y si esta registrado
+saldra un bienvenido para el usuario link a perfil, link a configuracion, link a salirse de la sesion, hora, tiempo
+de la localidad que ha puesto en su registrado
+
+El navbar normalmente va a tener un icono izquierda y el nombre de la aplicacion y en el medio una form de busqueda
+de usuario
+
+El footer tendra copyright mi nombre el año que estamos y el nombre de la aplicacion
+
+El home la pagina normal tendra, en el medio posts random si no esta logeado y si esta logeado saldran
+los posts nuevos de las personas que sigue se pueda dar like y comentar (botones) solo para usuario registrado,
+en los posts los usuarios pueden borrar su comentarios, el adminisrador puede hacerlo con todos en ese posts
+
+El search cuando buscas algo te redirrecciona a una pagina que saldran los resultados (perfiles de usuario) que al 
+pinchar a ellos te redirrecciona a su perfil (pagina de perfil)
+
+La pagina de perfil tendra la informacion del perfil, nombre username, descripcion, y los posts
+cada perfil tendra botones de seguir y no seguir y cada usuario propio de su pagina podra eliminar sus posts
+, el administrador al entrar a esas paginas puede bloquear y eliminar el usuario
+
+El register es un formulario normal que tendra:
+- username
+-email
+-name
+-surname1
+-surname2
+-password
+-location
+-imagen-perfil
+
+Y el login un formulario de solo username y password y saldra un mensaje en las dos paginas abajo debajo del formulario 
+si ha puesto algo mal (username ya existe, correo...)
+
+Pagina de configuracion de cada usuario, tendra un formulario que puede cambiarse su username, nombre, password, email...
+y tendra una pestaña de configuracion de aplicacion o algo asi para que tendra la apariencia cambiase a claro o oscuro
+y el boton de eliminar el usuario
+
+La pagina de crear post tendra un formulario de escribir un texto de su posts y subir una imagen y ponerlo pubico o privado
+los usuarios que siguen a ese usuario pueden ver sus post privados  y el usuario puede crear el posts con esos datos
+
+Y el dashboard que es para el admin puede ver informacion de la pagina, cuantos usuarios, existen, cuantos posts existen y todos
+
+El administrador puede ver todos los posts da igual que sean publicos o privados, puede borrarlos en las paginas de perfil
+de cada usuario, y en el home el usuario invitado puede ver solo post publicos random que salen en el principio
+
+

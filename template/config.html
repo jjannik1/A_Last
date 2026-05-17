@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <title>Document</title>
+</head>
+<body>
+    <a href="{{ url_for('config') }}">conf</a>
+    <a href="{{ url_for('login') }}">log</a>
+    <a href="{{ url_for('profile') }}">pro</a>
+    <a href="{{ url_for('register') }}">reg</a>
+    <a href="{{ url_for('search') }}">sear</a>
+    <a href="{{ url_for('home') }}">/</a>
+    <h1>Configuracion de usuario</h1>
+    
+    <div>
+        <div>
+            Aparencia: 
+            Modo claro
+            Modo oscuro
+        </div>
+        <div>
+            Cambiar nombre de usuario
+        </div>
+        <div>
+            Cambiar contraseña
+        </div>
+        <div>
+            Cambiar correo electronico
+        </div>
+    </div>
+    
+</body>
+</html>

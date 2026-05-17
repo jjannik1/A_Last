@@ -1,0 +1,9 @@
+{% for post in posts %}
+<div class="post" data-post-id="{{ post._id }}">
+    <p><strong>{{ post.userId }}</strong></p>
+    <p>{{ post.text }}</p>
+    {% if post.media_url %}
+        <img src="{{ post.media_url }}" alt="media" style="max-width: 300px;">
+    {% endif %}
+</div>
+{% endfor %}

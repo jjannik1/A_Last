@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    <div class="form-card" style="width: 100%; max-width: 600px; padding: 40px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h2 style="font-size: 2.2rem; font-weight: 800; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Únete a SocialApp</h2>
+            <p style="color: var(--text-muted); margin-top: 5px;">Crea tu cuenta en segundos y empieza a conectar.</p>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label for="username">Usuario</label>
+                    <input type="text" id="username" name="username" placeholder="Elige un alias" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Correo electrónico</label>
+                    <input type="email" id="email" name="email" placeholder="tu@email.com" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" placeholder="Mínimo 8 caracteres" required>
+            </div>
+
+            <div class="form-group">
+                <label for="name">Nombre</label>
+                <input type="text" id="name" name="name" placeholder="Tu nombre real" required>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label for="surname1">Primer apellido</label>
+                    <input type="text" id="surname1" name="surname1" placeholder="Apellido 1" required>
+                </div>
+                <div class="form-group">
+                    <label for="surname2">Segundo apellido</label>
+                    <input type="text" id="surname2" name="surname2" placeholder="Apellido 2 (opcional)">
+                </div>
+            </div>
+
+            <div class="form-group" style="position: relative;">
+                <label for="location">Localidad</label>
+                <input type="text" id="location" name="location" placeholder="Empieza a escribir tu ciudad..." required autocomplete="off">
+                <!-- Se ha arreglado el background y el color del buscador de ciudades -->
+                <div id="location-results" style="position:absolute; top:100%; left:0; right:0; background: var(--bg-card); backdrop-filter: blur(10px); border:1px solid var(--primary); border-radius: 0 0 12px 12px; z-index:1000; color: var(--text-main); overflow: hidden; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.5);"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="profile_image">Foto de perfil</label>
+                <input type="file" id="profile_image" name="profile_image" accept="image/*" style="padding: 10px; background: rgba(0,0,0,0.1); border: 1px dashed var(--primary); cursor: pointer;">
+            </div>
+
+            {% if error %}
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger); padding: 10px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; text-align: center;">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; padding: 14px; font-size: 1.1rem; border-radius: 12px;">Crear cuenta</button>
+        </form>
+
+        <div style="margin-top: 25px; text-align: center; font-size: 0.95rem; color: var(--text-muted);">
+            ¿Ya eres miembro? <a href="/login" style="font-weight: 600;">Inicia sesión</a>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos para los resultados de la localidad que se generan con JS */
+#location-results div {
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid var(--border);
+}
+#location-results div:last-child {
+    border-bottom: none;
+}
+#location-results div:hover {
+    background: rgba(139, 92, 246, 0.2);
+    color: var(--primary);
+}
+</style>
+
+{% endblock %}

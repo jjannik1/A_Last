@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="display: flex; justify-content: center; align-items: flex-start; min-height: 80vh; margin-top: 20px;">
+    <div class="form-card" style="width: 100%; max-width: 600px; padding: 40px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h2 style="font-size: 2.2rem; font-weight: 800; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Configuración</h2>
+            <p style="color: var(--text-muted); margin-top: 5px;">Personaliza tu perfil y preferencias.</p>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            
+            <h3 style="margin-bottom: 20px; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Perfil Público</h3>
+
+            <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 25px;">
+                <img src="{{ user.profile_image }}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary);">
+                <div class="form-group" style="flex: 1; margin: 0;">
+                    <label for="profile_image">Cambiar foto de perfil</label>
+                    <input type="file" name="profile_image" id="profile_image" accept="image/*" style="padding: 10px; background: rgba(0,0,0,0.1); border: 1px dashed var(--primary); cursor: pointer; border-radius: 12px;">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" name="username" placeholder="Nuevo username" value="{{ user.username }}">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" placeholder="Nuevo email" value="{{ user.email }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Nombre real</label>
+                <input type="text" name="name" placeholder="Tu nombre" value="{{ user.name }}">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label>Primer apellido</label>
+                    <input type="text" name="surname1" placeholder="Apellido 1" value="{{ user.surname1 }}">
+                </div>
+                <div class="form-group">
+                    <label>Segundo apellido</label>
+                    <input type="text" name="surname2" placeholder="Apellido 2 (opcional)" value="{{ user.surname2 }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Localidad</label>
+                <input type="text" name="location" placeholder="Ciudad o localidad" value="{{ user.location }}">
+            </div>
+
+            <h3 style="margin-top: 40px; margin-bottom: 20px; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Preferencias</h3>
+
+            <div class="form-group">
+                <label>Tema de la aplicación</label>
+                <select name="theme" style="width: 100%; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); border-radius: 12px; padding: 15px; outline: none; appearance: none;">
+                    <option value="light" {% if user.theme == 'light' %}selected{% endif %}>Modo Claro</option>
+                    <option value="dark" {% if user.theme == 'dark' %}selected{% endif %}>Modo Oscuro</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; padding: 14px; font-size: 1.1rem; border-radius: 12px;">Guardar cambios</button>
+        </form>
+
+        <h3 style="margin-top: 50px; margin-bottom: 20px; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 10px; color: var(--text-main);">Seguridad</h3>
+
+        <form method="post">
+            <div class="form-group">
+                <label>Contraseña actual</label>
+                <input type="password" name="current_password" placeholder="Tu contraseña actual">
+            </div>
+            <div class="form-group">
+                <label>Nueva contraseña</label>
+                <input type="password" name="new_password" placeholder="Mínimo 8 caracteres">
+            </div>
+            <button type="submit" style="background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 12px 20px; border-radius: 12px; width: 100%; font-weight: 600; cursor: pointer; transition: all 0.3s;">Actualizar contraseña</button>
+        </form>
+
+        <h3 style="margin-top: 50px; margin-bottom: 20px; font-size: 1.3rem; border-bottom: 1px solid rgba(239, 68, 68, 0.3); padding-bottom: 10px; color: var(--danger);">Zona Peligrosa</h3>
+
+        <form action="/delete-my-account" method="post" onsubmit="return confirm('¿Estás COMPLETAMENTE seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer.');">
+            <button class="btn-danger" style="width: 100%; padding: 12px; font-size: 1rem; border-radius: 12px;">Eliminar mi cuenta permanentemente</button>
+        </form>
+
+        {% if error %}
+        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger); padding: 15px; border-radius: 12px; margin-top: 30px; font-size: 0.95rem; text-align: center;">
+            {{ error }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

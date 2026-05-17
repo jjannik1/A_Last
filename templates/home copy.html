@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Feed</h2>
+
+{% for post in posts %}
+<div class="post-card" id="post-{{ post._id }}">
+
+    <div class="post-header">
+            <img src="{{ post.profile_image if post.profile_image else '/static/default.png' }}" class="avatar-small">        <div>
+            <strong>{{ post.username if post.username else '' }}</strong>
+            <div class="date">{{ post.creacionDate.strftime("%d/%m/%Y %H:%M") }}</div>
+        </div>
+    </div>
+
+    {% if post.media_url %}
+        <img src="{{ post.media_url }}" class="post-image">
+    {% endif %}
+
+    <p class="post-text">{{ post.text }}</p>
+
+<div class="post-actions">
+    <span class="like-btn {% if request.session.user and request.session.user.id in post.likes %}liked{% endif %}" data-post-id="{{ post._id }}">
+        ❤️ <span class="likes-count">{{ post.likes|length }}</span>
+    </span>
+    <span onclick="toggleComments('{{ post._id }}')" class="comment-btn">
+        💬 {{ post.comments|length }}
+    </span>
+</div>
+
+<!-- DIV DE COMENTARIOS OCULTO -->
+<div id="comments-{{ post._id }}" class="comments hidden">
+    {% if request.session.user %}
+    <div class="new-comment">
+        <input type="text" class="comment-input" placeholder="Escribe un comentario...">
+        <button class="comment-submit" data-post-id="{{ post._id }}">Enviar</button>
+    </div>
+    {% endif %}
+
+    <div class="existing-comments">
+{% for comment in post.comment_objects %}
+<div class="comment" id="comment-{{ comment._id }}">
+    <b>{{ comment.username }}</b>: {{ comment.text }} <small>{{ comment.creationDateFormatted }}</small>
+
+    {% if request.session.user and request.session.user.id == comment.userId %}
+        <button class="delete-comment-btn"
+                data-comment-id="{{ comment._id }}">
+            🗑
+        </button>
+    {% endif %}
+</div>
+{% endfor %}
+</div>
+
+
+</div>
+</div>
+{% endfor %}
+
+{% endblock %}

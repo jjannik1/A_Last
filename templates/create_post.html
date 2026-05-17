@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Crear un nuevo post</h2>
+
+<form action="/create-post" method="post" enctype="multipart/form-data">
+    <textarea name="text" placeholder="¿Qué estás pensando?" required></textarea>
+    
+    <label for="media">Adjuntar imagen o video:</label>
+    <input type="file" name="media" id="media" accept="image/*,video/*">
+    
+    <label for="visibility">Visibilidad:</label>
+    <select name="visibility" id="visibility">
+        <option value="public" selected>Público</option>
+        <option value="private">Privado</option>
+    </select>
+    
+    <button type="submit">Publicar</button>
+</form>
+{% endblock %}

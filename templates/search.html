@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="form-card" style="background: transparent; border: none; box-shadow: none;">
+    <h2 style="margin-bottom: 20px; text-align: center;">Resultados para <span style="color: var(--primary);">"{{ query }}"</span></h2>
+
+    {% if users|length == 0 %}
+    <div style="text-align: center; padding: 40px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px;">
+        <p style="font-size: 1.2rem;">No se encontraron usuarios con ese nombre.</p>
+        <p style="margin-top: 10px;">Prueba buscando otra cosa.</p>
+    </div>
+    {% else %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+        {% for user in users %}
+        <div class="user-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 0;">
+            <img src="{{ user.profile_image }}" class="avatar-small" style="width: 80px; height: 80px; margin-bottom: 15px;">
+            <a href="/profile/{{ user._id }}" style="font-weight: 600; font-size: 1.1rem; margin-bottom: 5px;">{{ user.username }}</a>
+            {% if user.name %}
+            <span style="color: var(--text-muted); font-size: 0.85rem;">{{ user.name }} {{ user.surname1 }}</span>
+            {% endif %}
+            <a href="/profile/{{ user._id }}" class="btn-primary" style="margin-top: 15px; width: 100%; font-size: 0.9rem;">Ver Perfil</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

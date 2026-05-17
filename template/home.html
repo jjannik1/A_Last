@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <title>Home</title>
+</head>
+<body>
+    <!-- Logout -->
+    {% if user %}
+    <form action="/logout" method="get">
+        <button type="submit">Logout</button>
+    </form>
+    {% endif %}
+
+    <!-- Navbar -->
+    <nav>
+        <a href="/"><img src="/static/logo.png" alt="icono-web-redirrecciona-inicio" height="40"></a>
+        <p>Mi Red Social</p>
+        {% if user %}
+        <a href="/profile"><img src="/static/settings.png" alt="icono-configuracion-de-usuario" height="40"></a>
+        {% else %}
+        <a href="/login">Login</a>
+        {% endif %}
+    </nav>
+
+    <!-- Bienvenida -->
+    <h1>
+        Bienvenido {% if user %}{{ user.username }}{% else %}Invitado{% endif %}
+    </h1>
+
+    <!-- Feed -->
+    <div id="feed">
+        {% for post in posts %}
+        <div class="post" data-post-id="{{ post._id }}">
+            <p><strong>Usuario: {{ post.userId }}</strong></p>
+            <p>{{ post.text }}</p>
+            {% if post.media_url %}
+                <img src="{{ post.media_url }}" alt="media" style="max-width: 300px;">
+            {% endif %}
+            <div>❤️ Likes: {{ post.likes|length }}</div>
+            <div>💬 Comentarios: {{ post.comments|length }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Scroll infinito -->
+    <script>
+    let skip = {{ posts|length }};
+    const feedDiv = document.getElementById("feed");
+    let loading = false;
+
+    window.addEventListener("scroll", async () => {
+        if (loading) return;
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
+            loading = true;
+            try {
+                const response = await fetch(`/feed?skip=${skip}`);
+                const html = await response.text();
+
+                const temp = document.createElement("div");
+                temp.innerHTML = html;
+                const newPosts = temp.querySelectorAll(".post");
+
+                if (newPosts.length > 0) {
+                    newPosts.forEach(p => feedDiv.appendChild(p));
+                    skip += newPosts.length;
+                }
+            } catch (err) {
+                console.error("Error cargando posts:", err);
+            }
+            loading = false;
+        }
+    });
+    </script>
+</body>
+</html>

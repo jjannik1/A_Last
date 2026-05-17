@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="display: flex; height: 75vh; background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+    
+    <!-- Sidebar de Usuarios -->
+    <div style="width: 300px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: rgba(0,0,0,0.1);">
+        <div style="padding: 20px; border-bottom: 1px solid var(--border);">
+            <h3 style="margin: 0; margin-bottom: 10px;">Chats</h3>
+            <input type="text" id="chat-search-input" placeholder="Buscar usuarios..." style="width: 100%; padding: 10px 15px; border-radius: 20px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: white; outline: none;">
+        </div>
+        
+        <div id="contacts-list" style="overflow-y: auto; flex: 1;">
+            {% if other_users|length == 0 %}
+                <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No tienes chats recientes. Usa el buscador de arriba para iniciar uno.</div>
+            {% endif %}
+            
+            {% for u in other_users %}
+            <div class="chat-user" data-id="{{ u._id }}" data-username="{{ u.username }}" data-img="{{ u.profile_image }}" style="padding: 15px 20px; display: flex; align-items: center; gap: 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;">
+                <img src="{{ u.profile_image }}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;">
+                <div>
+                    <div style="font-weight: 600;">{{ u.username }}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Toca para chatear</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Área de Chat Principal -->
+    <div style="flex: 1; display: flex; flex-direction: column; position: relative;">
+        <!-- Header del chat -->
+        <div id="chat-header" style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.02);">
+            <div style="color: var(--text-muted);">Selecciona un usuario para empezar a chatear.</div>
+        </div>
+
+        <!-- Mensajes -->
+        <div id="chat-messages" style="flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+            <!-- Los mensajes aparecerán aquí -->
+        </div>
+
+        <!-- Input de Mensaje -->
+        <div id="chat-input-area" style="padding: 20px; border-top: 1px solid var(--border); display: none; gap: 10px; background: rgba(255,255,255,0.02);">
+            <input type="text" id="message-input" placeholder="Escribe un mensaje..." style="flex: 1; padding: 12px 20px; border-radius: 20px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+            <button id="send-button" class="btn-primary" style="border-radius: 20px; padding: 0 25px;">Enviar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const currentUserId = "{{ user.id }}";
+    let activeChatUserId = null;
+
+    let lastTimestamp = null;
+
+    // Función para manejar el clic en un usuario (tanto recientes como buscados)
+    function attachUserClickEvents() {
+        document.querySelectorAll('.chat-user').forEach(userEl => {
+            userEl.addEventListener('click', async () => {
+                document.querySelectorAll('.chat-user').forEach(el => el.style.background = "");
+                userEl.style.background = "rgba(255,255,255,0.08)";
+                
+                activeChatUserId = userEl.getAttribute('data-id');
+                const username = userEl.getAttribute('data-username');
+                const img = userEl.getAttribute('data-img');
+
+                document.getElementById('chat-header').innerHTML = `
+                    <img src="${img}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                    <div style="font-weight: 600; font-size: 1.1rem;">${username}</div>
+                `;
+                
+                document.getElementById('chat-input-area').style.display = "flex";
+                
+                const messagesContainer = document.getElementById('chat-messages');
+                messagesContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted);">Cargando mensajes...</div>`;
+                
+                try {
+                    const res = await fetch(`/api/chat/history/${activeChatUserId}`);
+                    const history = await res.json();
+                    messagesContainer.innerHTML = "";
+                    if(history.length === 0) {
+                        messagesContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); margin-top: auto; margin-bottom: auto;">Envía un mensaje para iniciar la conversación</div>`;
+                    } else {
+                        history.forEach(appendMessage);
+                        if (history.length > 0) {
+                            lastTimestamp = history[history.length - 1].timestamp;
+                        }
+                        scrollToBottom();
+                    }
+                } catch (e) {
+                    messagesContainer.innerHTML = `<div style="text-align: center; color: var(--danger);">Error al cargar historial</div>`;
+                }
+            });
+        });
+    }
+
+    attachUserClickEvents();
+
+    // Buscador de usuarios
+    const searchInput = document.getElementById('chat-search-input');
+    const contactsList = document.getElementById('contacts-list');
+    
+    // Guardamos el HTML original de contactos recientes para restaurarlo
+    const originalContactsHTML = contactsList.innerHTML;
+
+    searchInput.addEventListener('input', async (e) => {
+        const q = e.target.value.trim();
+        if (q.length === 0) {
+            contactsList.innerHTML = originalContactsHTML;
+            attachUserClickEvents(); // Re-adjuntar eventos
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/chat/search?q=${encodeURIComponent(q)}`);
+            const users = await res.json();
+            
+            if (users.length === 0) {
+                contactsList.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No se encontraron usuarios.</div>`;
+                return;
+            }
+
+            let html = '<div style="padding: 10px 20px; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Resultados de búsqueda</div>';
+            users.forEach(u => {
+                html += `
+                <div class="chat-user" data-id="${u._id}" data-username="${u.username}" data-img="${u.profile_image}" style="padding: 15px 20px; display: flex; align-items: center; gap: 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;">
+                    <img src="${u.profile_image}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;">
+                    <div>
+                        <div style="font-weight: 600;">${u.username}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Toca para chatear</div>
+                    </div>
+                </div>
+                `;
+            });
+            contactsList.innerHTML = html;
+            attachUserClickEvents();
+        } catch (err) {
+            console.error("Error buscando usuarios", err);
+        }
+    });
+
+
+    // Enviar mensaje
+async function sendMessage() {
+
+    const input = document.getElementById('message-input');
+
+    const text = input.value.trim();
+
+    if (!text || !activeChatUserId) return;
+
+    try {
+
+        const res = await fetch("/api/chat/send", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                receiver_id: activeChatUserId,
+                content: text
+            })
+        });
+
+        if (!res.ok) {
+            alert("Error enviando mensaje");
+            return;
+        }
+
+        const msg = await res.json();
+
+        appendMessage(msg);
+
+        input.value = "";
+
+        const messagesContainer =
+            document.getElementById('chat-messages');
+
+        if (
+            messagesContainer.innerHTML.includes(
+                "Envía un mensaje para iniciar"
+            )
+        ) {
+            messagesContainer.innerHTML = "";
+        }
+
+        lastTimestamp = msg.timestamp;
+
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+    document.getElementById('send-button').addEventListener('click', sendMessage);
+    document.getElementById('message-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // Añadir mensaje a la UI
+    function appendMessage(msg) {
+        const isMine = msg.sender_id === currentUserId;
+        const align = isMine ? 'flex-end' : 'flex-start';
+        const bg = isMine ? 'var(--primary)' : 'rgba(255,255,255,0.1)';
+        const radius = isMine ? '16px 16px 0 16px' : '16px 16px 16px 0';
+        
+        const date = new Date(msg.timestamp);
+        const timeStr = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
+
+        const html = `
+            <div style="display: flex; flex-direction: column; align-items: ${align}; width: 100%;">
+                <div style="max-width: 70%; background: ${bg}; padding: 10px 15px; border-radius: ${radius}; color: white; margin-bottom: 5px;">
+                    ${msg.content}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${timeStr}</div>
+            </div>
+        `;
+        
+        const container = document.getElementById('chat-messages');
+        container.insertAdjacentHTML('beforeend', html);
+        scrollToBottom();
+    }
+
+    function scrollToBottom() {
+        const container = document.getElementById('chat-messages');
+        container.scrollTop = container.scrollHeight;
+    }
+
+    async function loadNewMessages() {
+
+    if (!activeChatUserId || !lastTimestamp) return;
+
+    try {
+
+        const res = await fetch(
+            `/api/chat/history/${activeChatUserId}?after=${lastTimestamp}`
+        );
+
+        const messages = await res.json();
+
+        if (messages.length > 0) {
+
+            messages.forEach(msg => {
+
+                // Evitar duplicar tus propios mensajes
+                if (msg.sender_id !== currentUserId) {
+                    appendMessage(msg);
+                }
+
+            });
+
+            lastTimestamp =
+                messages[messages.length - 1].timestamp;
+        }
+
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+setInterval(loadNewMessages, 3000);
+</script>
+
+{% endblock %}

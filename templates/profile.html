@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Cabecera Hero -->
+<div class="form-card" style="padding: 0; overflow: hidden; margin-bottom: 40px; border: none; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.4);">
+    <!-- Fondo decorativo (Cover) -->
+    <div style="height: 200px; background: linear-gradient(135deg, var(--primary), var(--secondary)); position: relative;">
+        <!-- Efecto de cristal para difuminar -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.2); backdrop-filter: blur(5px);"></div>
+    </div>
+    
+    <!-- Info del Perfil -->
+    <div style="padding: 0 30px 30px 30px; display: flex; flex-direction: column; align-items: center; margin-top: -75px; position: relative; z-index: 10;">
+        <img src="{{ user.profile_image }}" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 6px solid var(--bg-dark); box-shadow: 0 10px 25px rgba(0,0,0,0.5); background: var(--bg-dark);">
+        
+        <h2 style="margin-top: 15px; font-size: 2rem; font-weight: 800;">{{ user.username }}</h2>
+        <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 20px;">
+            {% if user.name %}{{ user.name }} {{ user.surname1 }}{% else %}Usuario{% endif %}
+            {% if user.location %} • 📍 {{ user.location }}{% endif %}
+        </p>
+
+        <!-- Estadísticas -->
+        <div style="display: flex; gap: 40px; margin-bottom: 25px; background: rgba(0,0,0,0.2); padding: 15px 40px; border-radius: 20px; border: 1px solid var(--border);">
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">{{ posts|length }}</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Posts</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--secondary);">{{ user.followers|length }}</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Seguidores</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent);">{{ user.following|length }}</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Seguidos</div>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div style="display: flex; gap: 15px; align-items: center;">
+            {% if request.session.user and request.session.user.id != user._id|string %}
+                <form action="/follow/{{ user._id }}" method="post" style="margin:0;">
+                    {% if request.session.user.id in user.followers %}
+                        <button type="submit" style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px;">Siguiendo ✓</button>
+                    {% else %}
+                        <button type="submit" class="btn-primary" style="padding: 10px 25px; border-radius: 30px;">Seguir</button>
+                    {% endif %}
+                </form>
+                <a href="/chat" class="btn-primary" style="background: var(--accent); padding: 10px 25px; border-radius: 30px; font-weight: 600;">✉ Mensaje</a>
+            {% endif %}
+
+            {% if request.session.user and request.session.user.id == user._id|string %}
+                <a href="/config" style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px; font-weight: 600; display: inline-block;">Editar Perfil</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Acciones Admin -->
+{% if request.session.user and request.session.user.rol == "admin" %}
+<div class="form-card" style="display: flex; gap: 15px; background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2);">
+    <strong style="color: var(--danger); display: flex; align-items: center; margin-right: auto;">🛡️ Panel Admin</strong>
+    <form action="/admin/toggle-block/{{ user._id }}" method="post" style="margin:0;">
+        {% if user.state == "active" %}
+            <button class="btn-danger">Bloquear Usuario</button>
+        {% else %}
+            <button class="btn-success">Desbloquear Usuario</button>
+        {% endif %}
+    </form>
+    <form action="/admin/delete/{{ user._id }}" method="post" style="margin:0;">
+        <button class="btn-danger" style="background: transparent; border: 1px solid var(--danger); color: var(--danger);">Eliminar</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Posts Grid -->
+<div style="margin-top: 40px;">
+    <h3 style="margin-bottom: 20px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
+        <span style="background: var(--primary); width: 8px; height: 24px; border-radius: 4px;"></span> 
+        Publicaciones
+    </h3>
+
+    {% if posts|length == 0 %}
+    <div style="text-align: center; padding: 50px; background: var(--bg-card); border-radius: 24px; color: var(--text-muted);">
+        <div style="font-size: 3rem; margin-bottom: 15px;">📸</div>
+        <p>Aún no hay publicaciones.</p>
+    </div>
+    {% else %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px;">
+        {% for post in posts %}
+        <div class="post-card" style="margin: 0; padding: 20px; display: flex; flex-direction: column;">
+            
+            {% if post.images %}
+                <img src="{{ post.images[0] }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 15px;">
+            {% endif %}
+            
+            <p style="color: var(--text-main); font-size: 1rem; flex: 1;">{{ post.text|truncate(100) }}</p>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
+                <div style="color: var(--text-muted); font-size: 0.85rem;">
+                    ❤️ {{ post.likes|length }} • 💬 {{ post.comments|length }}
+                </div>
+                
+                {% if request.session.user and request.session.user.id == user._id|string %}
+                    <form action="/delete-my-post/{{ post._id }}" method="post" onsubmit="return confirm('¿Seguro que quieres borrar este post?')" style="margin:0;">
+                        <button type="submit" style="background: transparent; border: none; color: var(--danger); cursor: pointer; padding: 5px;">🗑</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

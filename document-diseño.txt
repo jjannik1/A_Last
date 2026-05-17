@@ -1,0 +1,15 @@
+En el home, puede entrar cualquier persona, si esta logeado y esta en el home, vera las publicaciones
+mas recientes de que el sigue, luego veras y asi sigue hasta que ha visto entero (necesitario un
+input secreto o algo asi y al verlo se ejecuta o algo asi, seguramente js con un evento)
+y cuando ha terminado vera posts random (lo de los tags no se, tendre que ver la documentacion que he creado)
+y si no es logeado vera post random, da igual la fecha y todo,
+en la parte arriba, si no esta logeado vera en la parte izquierda el logo, y el nombre de la pagina,
+que redirrecciona al home otra vez (lo tendran todas las paginas o otros tinen un pequeño cambio de eso)
+en la parte derecha en el header , estaria un boton de logearse, si no esta logeado, y si esta logeado 
+he pensado en una hamburguesa (720px) donde estaria configuracion (perfil,vista,etc)
+, un botor de logout y un enlace de crear post o a lo mejor en una parte lateral, hay que ver eso,
+la pagina de login y register se parecen, un div en el centro que tiene campos para meter,
+datos, la configuracion, tendra en la parte lateral 2 o 3 viñetas para cambairse de que 
+configuracion quiere cambiar.
+a lo mejor lo pondre un max para el usuario guest para que si ha visto tantas post, le abrira una ventana en medio (div)
+que no se va, para que dice que debe logearse
