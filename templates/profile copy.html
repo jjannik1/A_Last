@@ -56,22 +56,9 @@
 </div>
 
 <!-- Acciones Admin -->
-{% if request.session.user and request.session.user.role == "admin" %}
-<div class="form-card" style="display: flex; gap: 15px; background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2); align-items: center; flex-wrap: wrap;">
+{% if request.session.user and request.session.user.rol == "admin" %}
+<div class="form-card" style="display: flex; gap: 15px; background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2);">
     <strong style="color: var(--danger); display: flex; align-items: center; margin-right: auto;">🛡️ Panel Admin</strong>
-    
-    {% if user.username != "admin" %}
-        {% if user.role == "admin" %}
-            <button class="btn-demote" data-user-id="{{ user._id }}" style="background: var(--warning, #f59e0b); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                Quitar Admin
-            </button>
-        {% else %}
-            <button class="btn-promote" data-user-id="{{ user._id }}" style="background: var(--success, #10b981); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                Hacer Admin
-            </button>
-        {% endif %}
-    {% endif %}
-
     <form action="/admin/toggle-block/{{ user._id }}" method="post" style="margin:0;">
         {% if user.state == "active" %}
             <button class="btn-danger">Bloquear Usuario</button>
@@ -79,7 +66,6 @@
             <button class="btn-success">Desbloquear Usuario</button>
         {% endif %}
     </form>
-    
     <form action="/admin/delete/{{ user._id }}" method="post" style="margin:0;">
         <button class="btn-danger" style="background: transparent; border: 1px solid var(--danger); color: var(--danger);">Eliminar</button>
     </form>

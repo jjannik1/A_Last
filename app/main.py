@@ -1,4 +1,3 @@
-import dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi import FastAPI, Form, Request, HTTPException, Query, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -50,9 +49,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # DATABASE
 # =====================================================
 
-import os
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://social-mongodb:27017")
+MONGO_URL = os.getenv("MONGO_URL")
 client = AsyncIOMotorClient(MONGO_URL)
 
 db = client["social"]
@@ -146,7 +144,7 @@ async def login_user(request: Request, username: str = Form(...), password: str 
         "id": str(user["_id"]),
         "username": user["username"],
         "email": user["email"],
-        "rol": user.get("rol", "user"),
+        "role": user.get("role", "user"),
         "location": user.get("location", "No especificada")
     }
 
@@ -165,6 +163,23 @@ async def logout(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
+
+    # 1. COMPROBACIÓN Y CREACIÓN DEL ADMIN AUTOMÁTICO (Con passlib)
+    admin_user = await users_collection.find_one({"username": "admin"})
+    if not admin_user:
+        # Hasheamos la contraseña de forma segura con pbkdf2_sha256
+        hashed_password = pbkdf2_sha256.hash("Admin1234")
+        
+        await users_collection.insert_one({
+            "username": "admin",
+            "password": hashed_password,
+            "role": "admin",
+            "email": "admin@socialapp.com",
+            "profile_image": None,
+            "following": [],
+            "followers": []
+        })
+
     user = request.session.get("user")
     posts = []
 
@@ -594,55 +609,47 @@ async def admin_dashboard(request: Request):
     })
 
 
-@app.post("/admin/toggle-block/{userid}")
-async def toggle_block_user(request: Request, userid: str):
-    user = request.session.get("user")
-    if not admin_required(user):
-        return RedirectResponse("/logout", status_code=303)
+@app.post("/admin/toggle-block/{user_id}")
+async def toggle_block(user_id: str, request: Request):
+    current_user = request.session.get("user")
+    
+    # CORREGIDO: Ahora cualquier usuario con rol admin puede usarlo, no solo el user 'admin'
+    if not current_user or current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+        
+    try:
+        obj_id = ObjectId(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID inválido")
+        
+    user_data = await users_collection.find_one({"_id": obj_id})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    current_state = user_data.get("state", "active")
+    new_state = "blocked" if current_state == "active" else "active"
+    
+    await users_collection.update_one({"_id": obj_id}, {"$set": {"state": new_state}})
+    return RedirectResponse(url=f"/profile/{user_id}", status_code=303)
 
-    target = await users_collection.find_one({"_id": ObjectId(userid)})
-    if not target:
-        raise HTTPException(status_code=404)
-
-    new_state = "blocked" if target.get("state") == "active" else "active"
-
-    await users_collection.update_one(
-        {"_id": ObjectId(userid)},
-        {"$set": {"state": new_state}}
-    )
-
-    return RedirectResponse(f"/profile/{userid}", status_code=303)
-
-
-@app.post("/admin/delete/{userid}")
-async def admin_delete_user(request: Request, userid: str):
-    user = request.session.get("user")
-    if not admin_required(user):
-        return RedirectResponse("/logout", status_code=303)
-
-    obj_id = ObjectId(userid)
-
-    # Quitar el usuario de followers/following
-    await users_collection.update_many(
-        {"followers": userid},
-        {"$pull": {"followers": userid}}
-    )
-    await users_collection.update_many(
-        {"following": userid},
-        {"$pull": {"following": userid}}
-    )
-
-    # Eliminar comentarios y posts
-    deleted_comments = await comments_collection.delete_many({"userId": obj_id})
-    deleted_posts = await posts_collection.delete_many({"userId": obj_id})
-
-    # Eliminar el usuario
+@app.post("/admin/delete/{user_id}")
+async def delete_user(user_id: str, request: Request):
+    current_user = request.session.get("user")
+    
+    # CORREGIDO: Validación por rol admin global
+    if not current_user or current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+        
+    try:
+        obj_id = ObjectId(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID inválido")
+        
+    # Borrar posts y usuario
+    await posts_collection.delete_many({"userId": obj_id})
     await users_collection.delete_one({"_id": obj_id})
-
-    print(f"Admin eliminó usuario {userid}, posts borrados: {deleted_posts.deleted_count}, comentarios borrados: {deleted_comments.deleted_count}")
-
-    return RedirectResponse("/admin/dashboard", status_code=303)
-
+    
+    return RedirectResponse(url="/", status_code=303)
 
 @app.get("/search", response_class=HTMLResponse)
 async def search(request: Request, q: str = Query(None)):
@@ -1165,3 +1172,29 @@ async def unread_messages(request: Request):
     ]).to_list(length=100)
 
     return JSONResponse(unread)
+
+@app.post("/change-role/{user_id}")
+async def change_role(user_id: str, request: Request):
+    current_user = request.session.get("user")
+    
+    # Validamos usando el campo 'role' que es el estándar seguro
+    if not current_user or current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=403, 
+            detail="No tienes permisos para realizar esta acción"
+        )
+    
+    try:
+        obj_id = ObjectId(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+        
+    target_user = await users_collection.find_one({"_id": obj_id})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    current_role = target_user.get("role", "user")
+    new_role = "user" if current_role == "admin" else "admin"
+    
+    await users_collection.update_one({"_id": obj_id}, {"$set": {"role": new_role}})
+    return {"status": "success", "new_role": new_role}

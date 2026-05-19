@@ -12,9 +12,17 @@ document.addEventListener("DOMContentLoaded", () => {
             const liked = btn.classList.contains("liked");
 
             try {
-                const res = await fetch(liked ? `/dislike/${postId}` : `/like/${postId}`, {
-                    method: "POST"
-                });
+                let res;
+
+                if (liked) {
+                    res = await fetch(`/dislike/${postId}`, {
+                        method: "POST"
+                    });
+                } else {
+                    res = await fetch(`/like/${postId}`, {
+                        method: "POST"
+                    });
+                }
                 if (!res.ok) {
                     alert("Error al dar like/deslike. ¿Estás logueado?");
                     busy = false;
@@ -80,7 +88,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 input.value = "";
 
                 // Actualizar contador de comentarios
-                const commentBtn = document.querySelector(`.post-card #comments-${postId}`)?.previousElementSibling?.querySelector(".comment-btn");
+                const commentBtnElement = document.querySelector(`.post-card #comments-${postId}`);
+
+                let commentBtn;
+
+                if (commentBtnElement) {
+                    const prev = commentBtnElement.previousElementSibling;
+
+                    if (prev) {
+                        commentBtn = prev.querySelector(".comment-btn");
+                    }
+                }
                 if (commentBtn) {
                     const countText = commentBtn.textContent.match(/\d+/);
                     if (countText) commentBtn.textContent = `💬 ${parseInt(countText[0]) + 1}`;
@@ -97,8 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ---------------------- BORRAR COMENTARIO ----------------------
     document.querySelectorAll(".delete-comment-btn").forEach(btn => {
         btn.addEventListener("click", async () => {
-            const commentId = btn.dataset.commentId;
-
+            const commentId = btn.getAttribute("data-comment-id");
             if (!commentId) return;
 
             try {
@@ -286,6 +303,31 @@ document.addEventListener("click", e => {
     }
 });
 
+// Dentro del único DOMContentLoaded de tu app.js, abajo del todo coloca esto:
+const roleButtons = document.querySelectorAll(".btn-promote, .btn-demote");
+roleButtons.forEach(button => {
+    button.addEventListener("click", async (e) => {
+        e.preventDefault(); // Evitamos cualquier comportamiento extraño
+        const userId = button.getAttribute("data-user-id");
+        
+        try {
+            const response = await fetch(`/change-role/${userId}`, {
+                method: "POST"
+            });
+            
+            if (response.ok) {
+                window.location.reload(); // Recarga la página para refrescar los cambios
+            } else {
+                const errorData = await response.json();
+                alert("Error: " + (errorData.detail || "No autorizado"));
+            }
+        } catch (error) {
+            console.error("Error en la petición:", error);
+            alert("Hubo un problema de red al cambiar el rol.");
+        }
+    });
+});
+
 });
 
 // ---------------------- FEED: CARGAR MÁS POSTS ----------------------
@@ -463,3 +505,33 @@ document
     .getElementById("send-btn")
     .addEventListener("click", sendMessage);
 
+// document.addEventListener("DOMContentLoaded", () => {
+//     // Escuchar clicks en los botones de promover o degradar
+//     const roleButtons = document.querySelectorAll(".btn-promote, .btn-demote");
+    
+//     roleButtons.forEach(button => {
+//         button.addEventListener("click", async (e) => {
+//             const userId = button.getAttribute("data-user-id");
+            
+//             try {
+//                 const response = await fetch(`/change-role/${userId}`, {
+//                     method: "POST",
+//                     headers: {
+//                         "Content-Type": "application/json"
+//                     }
+//                 });
+                
+//                 if (response.ok) {
+//                     // Recargamos para ver los cambios reflejados con el nuevo diseño
+//                     window.location.reload();
+//                 } else {
+//                     const errorData = await response.json();
+//                     alert("Error: " + errorData.detail);
+//                 }
+//             } catch (error) {
+//                 console.error("Error al cambiar el rol:", error);
+//                 alert("Hubo un problema de red al cambiar el rol.");
+//             }
+//         });
+//     });
+// });
