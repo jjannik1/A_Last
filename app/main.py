@@ -189,6 +189,7 @@ async def home(request: Request):
 
     user = request.session.get("user")
     posts = []
+    seen_posts = []
 
     if user:
         user_obj_id = ObjectId(user["id"])
@@ -196,34 +197,52 @@ async def home(request: Request):
 
         following_ids = user_data.get("following", [])
         following_obj_ids = []
-
         for uid in following_ids:
             try:
                 following_obj_ids.append(ObjectId(uid))
             except Exception:
-                pass  # ignorar si no es ObjectId válido
+                pass
 
-        # Buscamos posts:
-        # 1. Públicos
-        # 2. Privados de los que sigo
-        # 3. Mis propios privados
-        cursor = posts_collection.find({
+        # 1. Posts de los que sigo y mis propios posts
+        cursor_following = posts_collection.find({
             "$or": [
-                {"visibility": "public"},
+                {"visibility": "public", "userId": {"$in": following_obj_ids}},
                 {"visibility": "private", "userId": {"$in": following_obj_ids}},
-                {"userId": user_obj_id}  # siempre ver mis posts privados
+                {"userId": user_obj_id}
             ]
         }).sort("creacionDate", -1)
 
-        posts = await cursor.to_list(length=20)
+        posts = await cursor_following.to_list(length=20)
+        seen_posts.extend([str(p["_id"]) for p in posts])
+
+        # 2. Si faltan para llegar a 20, rellenar con posts públicos aleatorios (que no sean de los seguidos ni mios)
+        if len(posts) < 20:
+            exclude_ids = following_obj_ids + [user_obj_id]
+            cursor_others = posts_collection.find({
+                "visibility": "public",
+                "userId": {"$nin": exclude_ids}
+            })
+            other_posts = await cursor_others.to_list(length=None)
+            import random
+            random.shuffle(other_posts)
+            needed = 20 - len(posts)
+            posts.extend(other_posts[:needed])
+            seen_posts.extend([str(p["_id"]) for p in other_posts[:needed]])
+
+        request.session["seen_posts"] = seen_posts
 
     else:
-        # Usuario no logueado: solo posts públicos
-        cursor = posts_collection.find({"visibility": "public"}).sort("creacionDate", -1)
-        posts = await cursor.to_list(length=20)
+        # Usuario no logueado: solo posts públicos aleatorios
+        cursor = posts_collection.find({"visibility": "public"})
+        all_public = await cursor.to_list(length=None)
+        import random
+        random.shuffle(all_public)
+        posts = all_public[:20]
+        request.session["seen_posts"] = [str(p["_id"]) for p in posts]
 
     # Enriquecemos los posts con usuario, comentarios y likes
     enriched_posts = []
+    from datetime import timezone
     for post in posts:
         post_user = await users_collection.find_one({"_id": post["userId"]})
         if not post_user:
@@ -240,17 +259,14 @@ async def home(request: Request):
                 comment_user = await users_collection.find_one({"_id": comment["userId"]})
                 comment["username"] = comment_user["username"] if comment_user else "Usuario"
                 comment["userId"] = str(comment["userId"])
-                from datetime import timezone
 
-# dentro del for comment
                 if "creationDate" in comment:
                     dt = comment["creationDate"]
-
-    # Aseguramos que es UTC
                     if dt.tzinfo is None:
                         dt = dt.replace(tzinfo=timezone.utc)
-
                     comment["creationDateFormatted"] = dt.strftime("%H:%M %d/%m/%y")
+                else:
+                    comment["creationDateFormatted"] = ""
                 comment_objects.append(comment)
 
         post["comment_objects"] = comment_objects
@@ -1000,46 +1016,94 @@ async def feed_page(request: Request):
 @app.get("/feed/load-more", response_class=HTMLResponse)
 async def feed_load_more(request: Request):
     user = request.session.get("user")
-    if not user:
-        raise HTTPException(status_code=401, detail="No autorizado")
-
-    user_obj_id = ObjectId(user["id"])
     seen_posts = request.session.get("seen_posts", [])
+    seen_obj_ids = [ObjectId(pid) for pid in seen_posts if ObjectId.is_valid(pid)]
 
-    user_data = await users_collection.find_one({"_id": user_obj_id})
-    following_ids = [ObjectId(uid) for uid in user_data.get("following", []) if ObjectId.is_valid(uid)]
+    posts = []
 
-    # Excluimos los posts guardados en 'seen_posts'
-    cursor = posts_collection.find({
-        "$or": [
-            {"visibility": "public"},
-            {"visibility": "private", "userId": {"$in": following_ids}}
-        ],
-        "_id": {"$nin": [ObjectId(pid) for pid in seen_posts if ObjectId.is_valid(pid)]}
-    })
+    if user:
+        user_obj_id = ObjectId(user["id"])
+        user_data = await users_collection.find_one({"_id": user_obj_id})
+        following_ids = []
+        for uid in user_data.get("following", []):
+            try:
+                following_ids.append(ObjectId(uid))
+            except Exception:
+                pass
 
-    all_posts = await cursor.to_list(length=None)
-    if not all_posts:
+        # Excluimos los posts guardados en 'seen_posts'
+        cursor_following = posts_collection.find({
+            "$or": [
+                {"visibility": "public", "userId": {"$in": following_ids}},
+                {"visibility": "private", "userId": {"$in": following_ids}},
+                {"userId": user_obj_id}
+            ],
+            "_id": {"$nin": seen_obj_ids}
+        }).sort("creacionDate", -1)
+
+        followed_posts = await cursor_following.to_list(length=20)
+        posts.extend(followed_posts)
+
+        if len(posts) < 20:
+            exclude_ids = following_ids + [user_obj_id]
+            cursor_others = posts_collection.find({
+                "visibility": "public",
+                "userId": {"$nin": exclude_ids},
+                "_id": {"$nin": seen_obj_ids}
+            })
+            other_posts = await cursor_others.to_list(length=None)
+            import random
+            random.shuffle(other_posts)
+            needed = 20 - len(posts)
+            posts.extend(other_posts[:needed])
+
+    else:
+        cursor_others = posts_collection.find({
+            "visibility": "public",
+            "_id": {"$nin": seen_obj_ids}
+        })
+        other_posts = await cursor_others.to_list(length=None)
+        import random
+        random.shuffle(other_posts)
+        posts = other_posts[:20]
+
+    if not posts:
         return HTMLResponse("")  # Devuelve vacío si no quedan más posts
 
-    # Seleccionamos aleatoriamente 20 posts más
-    FEED_PAGE_LIMIT = 20
-    if len(all_posts) > FEED_PAGE_LIMIT:
-        random_posts = random.sample(all_posts, FEED_PAGE_LIMIT)
-    else:
-        random_posts = all_posts
-
     # Actualizamos la sesión acumulando los nuevos posts vistos
-    request.session["seen_posts"] = seen_posts + [str(p["_id"]) for p in random_posts]
+    request.session["seen_posts"] = seen_posts + [str(p["_id"]) for p in posts]
 
-    # Enriquecemos posts con username y profile_image
+    # Enriquecemos posts con username, profile_image y comentarios
     enriched_posts = []
-    for post in random_posts:
+    from datetime import timezone
+    for post in posts:
         post_user = await users_collection.find_one({"_id": post["userId"]})
         if not post_user:
             continue
+
         post["username"] = post_user["username"]
         post["profile_image"] = post_user.get("profile_image")
+
+        comment_objects = []
+        for comment_id in post.get("comments", []):
+            comment = await comments_collection.find_one({"_id": comment_id})
+            if comment:
+                comment_user = await users_collection.find_one({"_id": comment["userId"]})
+                comment["username"] = comment_user["username"] if comment_user else "Usuario"
+                comment["userId"] = str(comment["userId"])
+
+                if "creationDate" in comment:
+                    dt = comment["creationDate"]
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    comment["creationDateFormatted"] = dt.strftime("%H:%M %d/%m/%y")
+                else:
+                    comment["creationDateFormatted"] = ""
+                comment_objects.append(comment)
+
+        post["comment_objects"] = comment_objects
+        post["likes_count"] = len(post.get("likes", []))
+
         enriched_posts.append(post)
 
     return templates.TemplateResponse(request, "feed_posts_partial.html", {
