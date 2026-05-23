@@ -3,11 +3,11 @@
 
 <h2>Feed aleatorio</h2>
 
+<div id="posts-container">
 {% if posts %}
     {% for post in posts %}
     <div class="post-card" id="post-{{ post._id }}">
 
-        <!-- Usuario y perfil -->
         <div class="post-header">
             <img src="{{ post.profile_image if post.profile_image else '/static/default.png' }}" class="avatar-small">
             <div>
@@ -16,10 +16,8 @@
             </div>
         </div>
 
-        <!-- Texto -->
         <p class="post-text">{{ post.text }}</p>
 
-        <!-- Imágenes -->
         {% if post.images %}
         <div class="post-media-images">
             {% for img in post.images %}
@@ -28,7 +26,6 @@
         </div>
         {% endif %}
 
-        <!-- Videos -->
         {% if post.videos %}
         <div class="post-media-videos">
             {% for vid in post.videos %}
@@ -40,7 +37,6 @@
         </div>
         {% endif %}
 
-        <!-- Likes y comentarios -->
         <div class="post-actions">
             <span class="like-btn {% if request.session.user and request.session.user.id in post.likes %}liked{% endif %}" data-post-id="{{ post._id }}">
                 ❤️ <span class="likes-count">{{ post.likes|length }}</span>
@@ -55,5 +51,12 @@
 {% else %}
     <p>No hay posts disponibles para mostrar.</p>
 {% endif %}
+</div>
+
+<div style="text-align: center; margin: 30px 0;">
+    <button id="load-more-btn" style="padding: 12px 24px; background-color: var(--primary, #007bff); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold;">
+        Cargar más publicaciones
+    </button>
+</div>
 
 {% endblock %}

@@ -101,6 +101,9 @@ async def register_user(
 
     hashed_password = pbkdf2_sha256.hash(password)
 
+    ruta_imagen = f"/static/uploads/{filename}"
+
+
     await users_collection.insert_one({
     "username": username,
     "email": email,
@@ -108,7 +111,7 @@ async def register_user(
     "name": name,
     "surname1": surname1,
     "surname2": surname2,
-    "profile_image": f"/static/uploads/{filename}",
+    "profile_image": ruta_imagen,
     "followers": [],
     "following": [],
     "register_date": datetime.utcnow(),
@@ -147,6 +150,10 @@ async def login_user(request: Request, username: str = Form(...), password: str 
         "role": user.get("role", "user"),
         "location": user.get("location", "No especificada")
     }
+
+    # 👇 SI ES ADMIN, REDIRIGIR AL DASHBOARD DIRECTAMENTE
+    if user.get("role") == "admin":
+        return RedirectResponse("/admin/dashboard", status_code=303)
 
     return RedirectResponse("/", status_code=303)
 
@@ -266,28 +273,39 @@ async def home(request: Request):
 
 @app.get("/profile/{userid}", response_class=HTMLResponse)
 async def profile(request: Request, userid: str):
-    user_data = await users_collection.find_one({"_id": ObjectId(userid)})
+    try:
+        obj_user_id = ObjectId(userid)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+
+    user_data = await users_collection.find_one({"_id": obj_user_id})
     if not user_data:
-        raise HTTPException(status_code=404)
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     session_user = request.session.get("user")
 
-    # 👇 Si es dueño del perfil o admin → ver todo
+    # 1️⃣ SOLUCIÓN AL ROL: Cambiado 'rol' por 'role' para que coincida con el login
     if session_user and (
         session_user["id"] == userid or
-        session_user.get("rol") == "admin"
+        session_user.get("role") == "admin"
     ):
-        query = {"userId": ObjectId(userid)}
+        # 2️⃣ SOLUCIÓN AL TYPE: Busca tanto si el ID se guardó como ObjectId o como string
+        query = {"userId": {"$in": [obj_user_id, userid]}}
 
-    # 👇 Si es otro usuario o no está logueado → solo públicos
+    # Si es un visitante externo u otro usuario, solo ve los públicos
     else:
         query = {
-            "userId": ObjectId(userid),
+            "userId": {"$in": [obj_user_id, userid]},
             "visibility": "public"
         }
 
     posts_cursor = posts_collection.find(query).sort("creacionDate", -1)
     posts = await posts_cursor.to_list(length=50)
+
+    # Convertimos los _id a string para que Jinja2 no tenga problemas al renderizarlos
+    user_data["_id"] = str(user_data["_id"])
+    for post in posts:
+        post["_id"] = str(post["_id"])
 
     return templates.TemplateResponse(request, "profile.html", {
         "request": request,
@@ -478,24 +496,37 @@ async def delpost(request: Request, postid: str):
     if not user:
         return RedirectResponse("/login", status_code=303)
 
-    objpost = ObjectId(postid)
-    objuser = ObjectId(user["id"])
+    try:
+        objpost = ObjectId(postid)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de post inválido")
 
-    # 1️⃣ Buscar el post y verificar que es del usuario
+    # 1️⃣ Buscar el post
     post = await posts_collection.find_one({"_id": objpost})
+    if not post:
+        raise HTTPException(status_code=404, detail="El post no existe")
 
-    if not post or post["userId"] != objuser:
-        raise HTTPException(status_code=403, detail="No autorizado")
+    # Convertimos los IDs a string para comparar texto con texto de forma segura
+    post_owner_id = str(post.get("userId"))
+    current_user_id = str(user.get("id"))
+    user_role = user.get("role")  # O 'rol' según como lo tengas en tu sesión
 
-    # 2️⃣ Borrar todos los comentarios del post
-    comment_ids = post.get("comments", [])
-    if comment_ids:
-        await comments_collection.delete_many({"_id": {"$in": comment_ids}})
+    # Permite borrar si el usuario actual es el dueño O si es administrador
+    if post_owner_id == current_user_id or user_role == "admin":
+        
+        # 2️⃣ Borrar todos los comentarios del post
+        comment_ids = post.get("comments", [])
+        if comment_ids:
+            await comments_collection.delete_many({"_id": {"$in": comment_ids}})
 
-    # 3️⃣ Borrar el post
-    await posts_collection.delete_one({"_id": objpost})
+        # 3️⃣ Borrar el post
+        await posts_collection.delete_one({"_id": objpost})
 
-    return RedirectResponse("/", status_code=303)
+        # Redireccionar de vuelta al perfil del dueño del post o al inicio
+        return RedirectResponse(f"/profile/{post_owner_id}", status_code=303)
+    
+    # Si no es dueño ni admin, lanzar error 403
+    raise HTTPException(status_code=403, detail="No autorizado")
 
 @app.post("/delete-my-comment/{commentid}")
 async def delcom(request: Request, commentid: str):
@@ -580,7 +611,7 @@ async def delcom(request: Request, commentid: str):
 # =====================================================
 
 def admin_required(user):
-    return user and user.get("rol") == "admin"
+    return user and user.get("role") == "admin"
 
 
 @app.get("/admin/dashboard", response_class=HTMLResponse)
@@ -722,26 +753,58 @@ async def create_post(
 
     return RedirectResponse("/", status_code=303)
 
-@app.post("/follow/{userid}")
-async def follow_user(request: Request, userid: str):
-    user = request.session.get("user")
-    if not user:
+@app.post("/follow/{user_id}")
+async def follow_user(user_id: str, request: Request):
+    session_user = request.session.get("user")
+    if not session_user:
         return RedirectResponse("/login", status_code=303)
 
-    if user["id"] == userid:
-        return RedirectResponse("/", status_code=303)
+    current_user_id = session_user["id"]
+    if current_user_id == user_id:
+        raise HTTPException(status_code=400, detail="No puedes seguirte a ti mismo")
 
-    await users_collection.update_one(
-        {"_id": ObjectId(user["id"])},
-        {"$addToSet": {"following": userid}}
-    )
+    try:
+        target_uid = ObjectId(user_id)
+        current_uid = ObjectId(current_user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
 
-    await users_collection.update_one(
-        {"_id": ObjectId(userid)},
-        {"$addToSet": {"followers": user["id"]}}
-    )
+    # Guardar en base de datos
+    await users_collection.update_one({"_id": current_uid}, {"$addToSet": {"following": target_uid}})
+    await users_collection.update_one({"_id": target_uid}, {"$addToSet": {"followers": current_uid}})
 
-    return RedirectResponse(f"/profile/{userid}", status_code=303)
+    target_user = await users_collection.find_one({"_id": target_uid})
+    followers_count = len(target_user.get("followers", []))
+
+    return JSONResponse({"success": True, "following": True, "followers_count": followers_count})
+
+@app.post("/unfollow/{user_id}")
+async def unfollow_user(user_id: str, request: Request):
+    # 1. Validar sesión del usuario
+    session_user = request.session.get("user")
+    if not session_user:
+        return RedirectResponse("/login", status_code=303)
+
+    current_user_id = session_user["id"]
+
+    # Evitar que un usuario intente dejarse de seguir a sí mismo
+    if current_user_id == user_id:
+        raise HTTPException(status_code=400, detail="No puedes dejar de seguirte a ti mismo")
+
+    try:
+        target_uid = ObjectId(user_id)
+        current_uid = ObjectId(current_user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de usuario inválido")
+
+    # Quitar en base de datos usando ObjectIds
+    await users_collection.update_one({"_id": current_uid}, {"$pull": {"following": target_uid}})
+    await users_collection.update_one({"_id": target_uid}, {"$pull": {"followers": current_uid}})
+
+    target_user = await users_collection.find_one({"_id": target_uid})
+    followers_count = len(target_user.get("followers", []))
+
+    return JSONResponse({"success": True, "following": False, "followers_count": followers_count})
 
 @app.post("/comment")
 async def create_comment(request: Request, post_id: str = Form(...), text: str = Form(...)):
@@ -891,8 +954,9 @@ async def feed_page(request: Request):
 
     user_obj_id = ObjectId(user["id"])
     
-    # Guardamos IDs de posts ya vistos en la sesión
-    seen_posts = request.session.get("seen_posts", [])
+    # IMPORTANTE: Al entrar a la página limpia de cero, vaciamos los vistos
+    seen_posts = []
+    request.session["seen_posts"] = seen_posts
 
     # Obtenemos todos los posts públicos o privados de usuarios que sigo
     user_data = await users_collection.find_one({"_id": user_obj_id})
@@ -902,21 +966,20 @@ async def feed_page(request: Request):
         "$or": [
             {"visibility": "public"},
             {"visibility": "private", "userId": {"$in": following_ids}}
-        ],
-        "_id": {"$nin": [ObjectId(pid) for pid in seen_posts]}  # evitamos repetir
+        ]
     })
 
     all_posts = await cursor.to_list(length=None)
 
-    # Seleccionamos aleatoriamente FEED_PAGE_LIMIT posts
+    # Seleccionamos aleatoriamente un límite de 20 posts
+    FEED_PAGE_LIMIT = 20
     if len(all_posts) > FEED_PAGE_LIMIT:
         random_posts = random.sample(all_posts, FEED_PAGE_LIMIT)
     else:
         random_posts = all_posts
 
-    # Añadimos IDs a sesión para no repetirlos
-    new_seen_posts = seen_posts + [str(p["_id"]) for p in random_posts]
-    request.session["seen_posts"] = new_seen_posts
+    # Añadimos IDs a sesión para no repetirlos en el "Cargar más"
+    request.session["seen_posts"] = [str(p["_id"]) for p in random_posts]
 
     # Enriquecemos posts con username y profile_image
     enriched_posts = []
@@ -946,25 +1009,27 @@ async def feed_load_more(request: Request):
     user_data = await users_collection.find_one({"_id": user_obj_id})
     following_ids = [ObjectId(uid) for uid in user_data.get("following", []) if ObjectId.is_valid(uid)]
 
+    # Excluimos los posts guardados en 'seen_posts'
     cursor = posts_collection.find({
         "$or": [
             {"visibility": "public"},
             {"visibility": "private", "userId": {"$in": following_ids}}
         ],
-        "_id": {"$nin": [ObjectId(pid) for pid in seen_posts]}
+        "_id": {"$nin": [ObjectId(pid) for pid in seen_posts if ObjectId.is_valid(pid)]}
     })
 
     all_posts = await cursor.to_list(length=None)
     if not all_posts:
-        return HTMLResponse("")  # No hay más posts
+        return HTMLResponse("")  # Devuelve vacío si no quedan más posts
 
-    FEED_PAGE_LIMIT = 10
+    # Seleccionamos aleatoriamente 20 posts más
+    FEED_PAGE_LIMIT = 20
     if len(all_posts) > FEED_PAGE_LIMIT:
         random_posts = random.sample(all_posts, FEED_PAGE_LIMIT)
     else:
         random_posts = all_posts
 
-    # Añadimos IDs a sesión
+    # Actualizamos la sesión acumulando los nuevos posts vistos
     request.session["seen_posts"] = seen_posts + [str(p["_id"]) for p in random_posts]
 
     # Enriquecemos posts con username y profile_image
@@ -977,7 +1042,6 @@ async def feed_load_more(request: Request):
         post["profile_image"] = post_user.get("profile_image")
         enriched_posts.append(post)
 
-    # Renderizamos solo los posts como HTML parcial
     return templates.TemplateResponse(request, "feed_posts_partial.html", {
         "request": request,
         "posts": enriched_posts
@@ -1198,3 +1262,35 @@ async def change_role(user_id: str, request: Request):
     
     await users_collection.update_one({"_id": obj_id}, {"$set": {"role": new_role}})
     return {"status": "success", "new_role": new_role}
+
+@app.post("/follow/{user_id}")
+async def follow_user(user_id: str, request: Request):
+    if "user" not in request.session:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    target_uid = str(user_id)
+    current_uid = str(request.session["user"]["id"])
+    
+    if current_uid == target_uid:
+        return RedirectResponse(url=f"/profile/{user_id}", status_code=303)
+        
+    # Guardamos en los arrays usando strings simples (tal y como lo tenías)
+    await users_collection.update_one({"_id": ObjectId(current_uid)}, {"$addToSet": {"following": target_uid}})
+    await users_collection.update_one({"_id": ObjectId(user_id)}, {"$addToSet": {"followers": current_uid}})
+    
+    return RedirectResponse(url=f"/profile/{user_id}", status_code=303)
+
+
+@app.post("/unfollow/{user_id}")
+async def unfollow_user(user_id: str, request: Request):
+    if "user" not in request.session:
+        return RedirectResponse(url="/login", status_code=303)
+        
+    target_uid = str(user_id)
+    current_uid = str(request.session["user"]["id"])
+    
+    # CORRECCIÓN AQUÍ: Ambos accesos por _id principal deben llevar ObjectId()
+    await users_collection.update_one({"_id": ObjectId(current_uid)}, {"$pull": {"following": target_uid}})
+    await users_collection.update_one({"_id": ObjectId(user_id)}, {"$pull": {"followers": current_uid}})
+    
+    return RedirectResponse(url=f"/profile/{user_id}", status_code=303)

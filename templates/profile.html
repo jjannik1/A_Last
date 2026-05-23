@@ -1,15 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Cabecera Hero -->
 <div class="form-card" style="padding: 0; overflow: hidden; margin-bottom: 40px; border: none; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.4);">
-    <!-- Fondo decorativo (Cover) -->
     <div style="height: 200px; background: linear-gradient(135deg, var(--primary), var(--secondary)); position: relative;">
-        <!-- Efecto de cristal para difuminar -->
         <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.2); backdrop-filter: blur(5px);"></div>
     </div>
     
-    <!-- Info del Perfil -->
     <div style="padding: 0 30px 30px 30px; display: flex; flex-direction: column; align-items: center; margin-top: -75px; position: relative; z-index: 10;">
         <img src="{{ user.profile_image }}" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 6px solid var(--bg-dark); box-shadow: 0 10px 25px rgba(0,0,0,0.5); background: var(--bg-dark);">
         
@@ -19,14 +15,13 @@
             {% if user.location %} • 📍 {{ user.location }}{% endif %}
         </p>
 
-        <!-- Estadísticas -->
         <div style="display: flex; gap: 40px; margin-bottom: 25px; background: rgba(0,0,0,0.2); padding: 15px 40px; border-radius: 20px; border: 1px solid var(--border);">
             <div style="text-align: center;">
                 <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">{{ posts|length }}</div>
                 <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Posts</div>
             </div>
             <div style="text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: 700; color: var(--secondary);">{{ user.followers|length }}</div>
+                <div id="followers-count" style="font-size: 1.5rem; font-weight: 700; color: var(--secondary);">{{ user.followers|length }}</div>
                 <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Seguidores</div>
             </div>
             <div style="text-align: center;">
@@ -35,58 +30,80 @@
             </div>
         </div>
 
-        <!-- Acciones -->
         <div style="display: flex; gap: 15px; align-items: center;">
-            {% if request.session.user and request.session.user.id != user._id|string %}
-                <form action="/follow/{{ user._id }}" method="post" style="margin:0;">
-                    {% if request.session.user.id in user.followers %}
-                        <button type="submit" style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px;">Siguiendo ✓</button>
-                    {% else %}
-                        <button type="submit" class="btn-primary" style="padding: 10px 25px; border-radius: 30px;">Seguir</button>
+            {% if request.session.user and request.session.user.id|string != user._id|string %}
+                
+                {% set ya_le_sigo = false %}
+                {% for follower in user.followers %}
+                    {# Si se almacena como ObjectId nativo, extraemos la propiedad de texto limpia #}
+                    {% set f_id = follower.str if follower.str is defined else follower|string %}
+                    {% if 'ObjectId' in f_id %}
+                        {# Limpieza de seguridad en caso de que mantenga la envoltura de texto de MongoDB #}
+                        {% set f_id = f_id.replace("ObjectId('","").replace("')","") %}
                     {% endif %}
-                </form>
-                <a href="/chat" class="btn-primary" style="background: var(--accent); padding: 10px 25px; border-radius: 30px; font-weight: 600;">✉ Mensaje</a>
+                    
+                    {% if f_id == request.session.user.id|string %}
+                        {% set ya_le_sigo = true %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if ya_le_sigo %}
+                    <button class="follow-btn following" data-user-id="{{ user._id }}" 
+                            onmouseover="this.innerText='Dejar de seguir ❌'; this.style.background='var(--danger, #dc3545)'; this.style.color='white';" 
+                            onmouseout="this.innerText='Siguiendo ✓'; this.style.background='rgba(255,255,255,0.1)'; this.style.color='var(--text-main)';" 
+                            style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: background 0.2s, color 0.2s;">
+                        Siguiendo ✓
+                    </button>
+                {% else %}
+                    <button class="follow-btn btn-primary" data-user-id="{{ user._id }}" style="padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; border: none;">
+                        Seguir
+                    </button>
+                {% endif %}
+
+                <a href="/chat" class="btn-primary" style="background: var(--accent); padding: 10px 25px; border-radius: 30px; font-weight: 600; text-decoration: none;">✉ Mensaje</a>
             {% endif %}
 
             {% if request.session.user and request.session.user.id == user._id|string %}
-                <a href="/config" style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px; font-weight: 600; display: inline-block;">Editar Perfil</a>
+                <a href="/config" style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px; font-weight: 600; display: inline-block; text-decoration: none;">Editar Perfil</a>
             {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Acciones Admin -->
 {% if request.session.user and request.session.user.role == "admin" %}
-<div class="form-card" style="display: flex; gap: 15px; background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2); align-items: center; flex-wrap: wrap;">
+<div class="form-card" style="display: flex; gap: 15px; background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2); align-items: center; flex-wrap: wrap; padding: 20px; border-radius: 16px;">
     <strong style="color: var(--danger); display: flex; align-items: center; margin-right: auto;">🛡️ Panel Admin</strong>
     
-    {% if user.username != "admin" %}
-        {% if user.role == "admin" %}
-            <button class="btn-demote" data-user-id="{{ user._id }}" style="background: var(--warning, #f59e0b); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                Quitar Admin
-            </button>
-        {% else %}
-            <button class="btn-promote" data-user-id="{{ user._id }}" style="background: var(--success, #10b981); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                Hacer Admin
-            </button>
+    {% if request.session.user.id == user._id|string %}
+        <span style="color: var(--text-muted); font-size: 0.9rem; font-style: italic; padding: 8px;">No puedes modificar tus propias acciones de estado desde aquí.</span>
+    {% else %}
+        {% if user.username != "admin" %}
+            {% if user.role == "admin" %}
+                <button type="button" onclick="degradarUsuario('{{ user._id }}')" style="background: var(--warning, #f59e0b); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Quitar Admin
+                </button>
+            {% else %}
+                <button type="button" onclick="promoverUsuario('{{ user._id }}')" style="background: var(--success, #10b981); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Hacer Admin
+                </button>
+            {% endif %}
         {% endif %}
-    {% endif %}
 
-    <form action="/admin/toggle-block/{{ user._id }}" method="post" style="margin:0;">
-        {% if user.state == "active" %}
-            <button class="btn-danger">Bloquear Usuario</button>
-        {% else %}
-            <button class="btn-success">Desbloquear Usuario</button>
-        {% endif %}
-    </form>
-    
-    <form action="/admin/delete/{{ user._id }}" method="post" style="margin:0;">
-        <button class="btn-danger" style="background: transparent; border: 1px solid var(--danger); color: var(--danger);">Eliminar</button>
-    </form>
+        <form action="/admin/toggle-block/{{ user._id }}" method="post" style="margin:0;">
+            {% if user.state == "active" %}
+                <button type="submit" class="btn-danger" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">Bloquear Usuario</button>
+            {% else %}
+                <button type="submit" class="btn-success" style="padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">Desbloquear Usuario</button>
+            {% endif %}
+        </form>
+        
+        <form action="/admin/delete/{{ user._id }}" method="post" style="margin:0;" onsubmit="return confirm('¿Seguro que quieres eliminar definitivamente este usuario?')">
+            <button type="submit" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">Eliminar</button>
+        </form>
+    {% endif %}
 </div>
 {% endif %}
 
-<!-- Posts Grid -->
 <div style="margin-top: 40px;">
     <h3 style="margin-bottom: 20px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
         <span style="background: var(--primary); width: 8px; height: 24px; border-radius: 4px;"></span> 
@@ -114,7 +131,7 @@
                     ❤️ {{ post.likes|length }} • 💬 {{ post.comments|length }}
                 </div>
                 
-                {% if request.session.user and request.session.user.id == user._id|string %}
+                {% if request.session.user and (request.session.user.id == user._id|string or request.session.user.role == "admin") %}
                     <form action="/delete-my-post/{{ post._id }}" method="post" onsubmit="return confirm('¿Seguro que quieres borrar este post?')" style="margin:0;">
                         <button type="submit" style="background: transparent; border: none; color: var(--danger); cursor: pointer; padding: 5px;">🗑</button>
                     </form>

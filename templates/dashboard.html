@@ -50,6 +50,9 @@
                         {% endif %}
                     </td>
                     <td style="padding: 12px;">
+                        {% if request.session.user and request.session.user.id == u._id|string %}
+                            <span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">Eres tú</span>
+                        {% else %}
                         <form action="/admin/toggle-block/{{ u._id }}" method="post" style="display: inline;">
                             {% if u.state == "blocked" %}
                                 <button type="submit" class="btn-success" style="padding: 6px 10px; font-size: 0.85rem;">Desbloquear</button>
@@ -57,6 +60,7 @@
                                 <button type="submit" class="btn-danger" style="padding: 6px 10px; font-size: 0.85rem;">Bloquear</button>
                             {% endif %}
                         </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
