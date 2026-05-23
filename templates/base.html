@@ -31,7 +31,7 @@
         <span id="time"></span>
         <span id="weather"></span>
     </div>
-    {% if request.session.user.rol == "admin" %}
+    {% if request.session.user.role == "admin" %}
         <a href="/admin/dashboard">Admin</a>
     {% endif %}
     <a href="/logout">Salir</a>
