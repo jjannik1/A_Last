@@ -59,8 +59,6 @@
                         Seguir
                     </button>
                 {% endif %}
-
-                <a href="/chat" class="btn-primary" style="background: var(--accent); padding: 10px 25px; border-radius: 30px; font-weight: 600; text-decoration: none;">✉ Mensaje</a>
             {% endif %}
 
             {% if request.session.user and request.session.user.id == user._id|string %}

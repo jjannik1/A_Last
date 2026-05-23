@@ -24,7 +24,6 @@
     {% if request.session.get("user") %}
         <a href="/create-post" class="btn-post">➕ Nuevo post</a>
     <span class="welcome">Bienvenido, <b>{{ request.session.user.username }}</b></span>
-    <a href="/chat">💬 Chat</a>
     <a href="/profile/{{ request.session.user.id }}">Perfil</a>
     <a href="/config">⚙</a>
     <div id="navbar-info">

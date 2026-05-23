@@ -349,82 +349,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// ---------------------- CHAT EN TIEMPO REAL ----------------------
-let currentChatUser = null;
-let lastTimestamp = null;
-
-async function loadChat(userId) {
-    currentChatUser = userId;
-    try {
-        const res = await fetch(`/api/chat/history/${userId}`);
-        const messages = await res.json();
-        const chatBox = document.getElementById("chat-box");
-        chatBox.innerHTML = "";
-
-        messages.forEach(msg => { appendMessage(msg); });
-
-        if (messages.length > 0) {
-            lastTimestamp = messages[messages.length - 1].timestamp;
-        }
-    } catch(err) {
-        console.error(err);
-    }
-}
-
-async function loadNewMessages() {
-    if (!currentChatUser) return;
-    try {
-        let url = `/api/chat/history/${currentChatUser}`;
-        if (lastTimestamp) url += `?after=${lastTimestamp}`;
-
-        const res = await fetch(url);
-        const messages = await res.json();
-
-        if (messages.length > 0) {
-            messages.forEach(msg => { appendMessage(msg); });
-            lastTimestamp = messages[messages.length - 1].timestamp;
-        }
-    } catch(err) {
-        console.error(err);
-    }
-}
-setInterval(loadNewMessages, 3000);
-
-function appendMessage(msg) {
-    const chatBox = document.getElementById("chat-box");
-    if (!chatBox) return;
-    const div = document.createElement("div");
-    div.classList.add("message");
-
-    if (msg.sender_id === window.currentUserId) {
-        div.classList.add("my-message");
-    } else {
-        div.classList.add("other-message");
-    }
-
-    div.innerHTML = `<p>${msg.content}</p><small>${msg.timestamp}</small>`;
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-async function sendMessage() {
-    const input = document.getElementById("message-input");
-    const content = input.value.trim();
-    if (!content || !currentChatUser) return;
-
-    try {
-        const res = await fetch("/api/chat/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ receiver_id: currentChatUser, content: content })
-        });
-        const msg = await res.json();
-        lastTimestamp = msg.timestamp;
-        input.value = "";
-    } catch(err) {
-        console.error(err);
-    }
-}
 
 // FUNCIONES GLOBALES DE ADMIN PERFIL
 // Función para dar permisos de Administrador
@@ -460,9 +384,4 @@ function degradarUsuario(userId) {
         .catch(error => console.error("Error:", error));
     }
 }
-
-// Bindeo del botón de envío de chat si existe en la página actual
-const sendBtn = document.getElementById("send-btn");
-if (sendBtn) {
-    sendBtn.addEventListener("click", sendMessage);
-}
+
