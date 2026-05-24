@@ -1,50 +1,52 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>SocialApp</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/style.css?v=6">
-    <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
-    <script defer src="/static/app.js"></script>
+    <script defer src="/static/app.js?v=3"></script>
 </head>
+
 <body class="{{ user.theme if user else 'light' }}">
 
-<nav class="navbar">
-    <div class="nav-left">
-        <a href="/" class="logo">SocialApp</a>
-    </div>
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/" class="logo">SocialApp</a>
+        </div>
 
-    <div class="nav-center">
-        <form action="/search" method="get">
-            <input type="text" name="q" placeholder="Buscar usuarios...">
-        </form>
-    </div>
+        <div class="nav-center">
+            <form action="/search" method="get">
+                <input type="text" name="q" placeholder="Buscar usuarios...">
+            </form>
+        </div>
 
-    <div class="nav-right">
-    {% if request.session.get("user") %}
-        <a href="/create-post" class="btn-post">➕ Nuevo post</a>
-    <span class="welcome">Bienvenido, <b>{{ request.session.user.username }}</b></span>
-    <a href="/profile/{{ request.session.user.id }}">Perfil</a>
-    <a href="/config">⚙</a>
-    <div id="navbar-info">
-        <span id="user-location"></span>
-        <span id="time"></span>
-        <span id="weather"></span>
-    </div>
-    {% if request.session.user.role == "admin" %}
-        <a href="/admin/dashboard">Admin</a>
-    {% endif %}
-    <a href="/logout">Salir</a>
-{% else %}
-    <a href="/login">Login</a>
-    <a href="/register" class="btn-primary">Registrarse</a>
+        <div class="nav-right">
+            {% if request.session.get("user") %}
+            <a href="/create-post" class="btn-post">➕ Nuevo post</a>
+            <span class="welcome">Bienvenido, <b>{{ request.session.user.username }}</b></span>
+            <a href="/profile/{{ request.session.user.id }}">Perfil</a>
+            <a href="/config">⚙</a>
+            <div id="navbar-info">
+                <span id="user-location"></span>
+                <span id="time"></span>
+                <span id="weather"></span>
+            </div>
+            {% if request.session.user.role == "admin" %}
+            <a href="/admin/dashboard">Admin</a>
+            {% endif %}
+            <a href="/logout">Salir</a>
+            {% else %}
+            <a href="/login">Login</a>
+            <a href="/register" class="btn-primary">Registrarse</a>
 
-{% endif %}
+            {% endif %}
+        </div>
+    </nav>
+    <div class="container">
+        {% block content %}{% endblock %}
     </div>
-</nav>
-<div class="container">
-{% block content %}{% endblock %}
-</div>
 
 </body>
+
 </html>

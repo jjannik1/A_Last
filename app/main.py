@@ -913,21 +913,28 @@ async def navbar_info(request: Request):
         return {"time": None, "weather": None}
 
     # 1️⃣ Geocodificar ciudad (OpenStreetMap Nominatim)
-    lat, lon = None, None
+    lat = None
+    lon = None
     try:
         async with httpx.AsyncClient() as client:
-            nom_url = f"https://nominatim.openstreetmap.org/search?city={location}&format=json"
+            nom_url = "https://nominatim.openstreetmap.org/search?city=" + location + "&format=json"
             res = await client.get(nom_url, headers={"User-Agent": "SocialApp"})
             geo = res.json()
             if len(geo) > 0:
                 lat = float(geo[0]["lat"])
                 lon = float(geo[0]["lon"])
-    except:
-        pass
+            else:
+                lat = None
+                lon = None
+    except Exception as e:
+        lat = None
+        lon = None
 
-    # Si no hay coordenadas, enviar vacío
-    if not lat or not lon:
-        return {"time": None, "weather": None}
+    if lat == None:
+        return {"time": None, "weather": None, "location": location}
+    else:
+        if lon == None:
+            return {"time": None, "weather": None, "location": location}
 
     # 2️⃣ Clima con Open‑Meteo (sin API key ⚡)
     weather = None

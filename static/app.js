@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (likeBtn.dataset.busy === "true") return;
             likeBtn.dataset.busy = "true";
 
-            const postId = likeBtn.dataset.postId;
+            const postId = likeBtn.id.replace("like-btn-", "");
             const liked = likeBtn.classList.contains("liked");
 
             try {
@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // 2. LÓGICA DE ENVÍO DE COMENTARIOS
         const commentSubmitBtn = e.target.closest(".comment-submit");
         if (commentSubmitBtn) {
-            const postId = commentSubmitBtn.dataset.postId;
+            const postId = commentSubmitBtn.id.replace("comment-submit-", "");
             const input = commentSubmitBtn.closest(".new-comment").querySelector(".comment-input");
             const text = input.value.trim();
             if (!text) return;
@@ -58,19 +58,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 const commentData = await res.json();
 
                 let formattedDate = "";
-                if (commentData.creationDate) {
-                    const dt = luxon.DateTime.fromISO(commentData.creationDate);
-                    if (dt.isValid) {
-                        formattedDate = dt.toFormat("HH:mm dd/LL/yy");
+                if (commentData.creationDate !== undefined && commentData.creationDate !== null) {
+                    const dt = new Date(commentData.creationDate);
+                    if (!isNaN(dt.getTime())) {
+                        const hh = String(dt.getHours()).padStart(2, '0');
+                        const mm = String(dt.getMinutes()).padStart(2, '0');
+                        const dd = String(dt.getDate()).padStart(2, '0');
+                        const mo = String(dt.getMonth() + 1).padStart(2, '0');
+                        const yy = String(dt.getFullYear()).slice(-2);
+                        formattedDate = hh + ":" + mm + " " + dd + "/" + mo + "/" + yy;
                     }
                 }                
 
                 const commentsDiv = document.querySelector(`#comments-${postId} .existing-comments`);
-                if (commentsDiv) {
+                if (commentsDiv !== null) {
                     const newComment = document.createElement("div");
                     newComment.classList.add("comment");
-                    newComment.id = `comment-${commentData._id || commentData.id}`;
-                    newComment.innerHTML = `<b>${commentData.username || currentUser}</b>: ${commentData.text} <small>${formattedDate}</small>`;
+                    const newId = commentData._id || commentData.id;
+                    newComment.id = "comment-" + newId;
+                    newComment.innerHTML = "<b>" + (commentData.username || currentUser) + "</b>: " + commentData.text + " <small>" + formattedDate + "</small> <button id='delete-comment-" + newId + "' class='delete-comment-btn'>🗑</button>";
                     commentsDiv.appendChild(newComment);
                 }
 
@@ -95,7 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // 3. LÓGICA DE BORRAR COMENTARIO
         const deleteCommentBtn = e.target.closest(".delete-comment-btn");
         if (deleteCommentBtn) {
-            const commentId = deleteCommentBtn.getAttribute("data-comment-id");
+            const commentId = deleteCommentBtn.id.replace("delete-comment-", "");
             if (!commentId) return;
 
             try {
@@ -135,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (followBtn.dataset.busy === "true") return;
             followBtn.dataset.busy = "true";
 
-            const userId = followBtn.dataset.userId;
+            const userId = followBtn.id.replace("follow-btn-", "");
             const isFollowing = followBtn.classList.contains("following");
 
             try {
@@ -201,21 +207,34 @@ document.addEventListener("DOMContentLoaded", () => {
             const weatherEl = document.getElementById("weather");
             const locationEl = document.getElementById("user-location");
 
-            if (data.location && locationEl) {
-                locationEl.textContent = data.location;
+            if (data.location !== undefined && data.location !== null) {
+                if (locationEl !== null) {
+                    locationEl.textContent = data.location;
+                }
+            } else {
+                if (locationEl !== null) {
+                    locationEl.textContent = "Sin ubicación";
+                }
             }
 
-            if (data.time && timeEl) {
-                const dt = luxon.DateTime.fromISO(data.time);
-                if (dt.isValid) {
-                    timeEl.textContent = `🕒 ${dt.toLocaleString(luxon.DateTime.TIME_SIMPLE)}`;
-                } else {
+            if (data.time !== undefined && data.time !== null) {
+                if (timeEl !== null) {
+                    timeEl.textContent = "🕒 " + data.time;
+                }
+            } else {
+                if (timeEl !== null) {
                     timeEl.textContent = "🕒 --:--";
                 }
             }
 
-            if (data.weather && weatherEl) {
-                weatherEl.textContent = `🌡 ${data.weather.temperature}°C, 🌬 ${data.weather.windspeed} km/h`;
+            if (data.weather !== undefined && data.weather !== null) {
+                if (weatherEl !== null) {
+                    weatherEl.textContent = "🌡 " + data.weather.temperature + "°C, 🌬 " + data.weather.windspeed + " km/h";
+                }
+            } else {
+                if (weatherEl !== null) {
+                    weatherEl.textContent = "🌡 --°C";
+                }
             }
         } catch (err) {
             console.error("Error cargando info del navbar:", err);
@@ -225,66 +244,18 @@ document.addEventListener("DOMContentLoaded", () => {
     updateNavbarInfo();
     setInterval(updateNavbarInfo, 60000);
 
-    // ---------------------- AUTOCOMPLETADO DE LOCALIDADES ----------------------
-    const worldCapitals = [
-        "Kabul","Tirana","Berlin","Andorra la Vella","Luanda","Saint John’s","Riyadh","Algiers","Buenos Aires","Yerevan",
-        "Canberra","Vienna","Baku","Nassau","Dhaka","Bridgetown","Manama","Brussels","Belmopan","Porto-Novo",
-        "Minsk","Brasília","Sofia","Ouagadougou","Gitega","Praia","Phnom Penh","Yaoundé","Ottawa","Bangui",
-        "N'Djamena","Santiago","Beijing","Bogotá","Moroni","Kinshasa","Brazzaville","San José","Yamoussoukro","Zagreb",
-        "Havana","Nicosia","Prague","Copenhagen","Djibouti","Roseau","Santo Dominican","Quito","Cairo","San Salvador",
-        "Asmara","Tallinn","Mbabane","Addis Ababa","Suva","Helsinki","Paris","Libreville","Banjul","Tbilisi",
-        "Accra","Athens","Saint George’s","Guatemala City","Conakry","Bissau","Georgetown","Port‑au‑Prince","Tegucigalpa","Budapest",
-        "Reykjavik","New Delhi","Jakarta","Tehran","Baghdad","Dublin","Jerusalem","Rome","Kingston","Tokyo",
-        "Amman","Astana","Nairobi","Tarawa","Pristina","Kuwait City","Bishkek","Vientiane","Riga","Beirut",
-        "Maseru","Monrovia","Tripoli","Vaduz","Vilnius","Luxembourg","Antananarivo","Lilongwe","Kuala Lumpur","Malé",
-        "Bamako","Valletta","Majuro","Nouakchott","Port Louis","Mexico City","Palikir","Chisinau","Monaco","Ulaanbaatar",
-        "Podgorica","Rabat","Maputo","Naypyidaw","Windhoek","Yaren","Kathmandu","Amsterdam","Wellington","Managua",
-        "Niamey","Abuja","Pyongyang","Oslo","Muscat","Islamabad","Melekeok","Panama City","Port Moresby","Asunción",
-        "Lima","Manila","Warsaw","Lisbon","Doha","Bucharest","Moscow","Kigali","Basseterre","Castries","Kingstown",
-        "Apia","San Marino","São Tomé","Abu Dhabi","Dakar","Belgrade","Victoria","Freetown","Singapore","Bratislava",
-        "Ljubljana","Honiara","Mogadishu","Pretoria","Seoul","Juba","Madrid","Colombo","Khartoum","Paramaribo",
-        "Stockholm","Bern","Damascus","Taipei","Dushanbe","Dodoma","Bangkok","Lomé","Nukuʻalofa","Port of Spain",
-        "Tunis","Ankara","Ashgabat","Funafuti","Kampala","Kyiv","London","Washington, D.C.","Montevideo","Tashkent",
-        "Port Vila","Vatican City","Caracas","Hanoi","Sana’a","Lusaka","Harare","Ramallah"
-    ];
-
-    const locationInput = document.getElementById("location");
-    const resultsDiv = document.getElementById("location-results");
-
-    if (locationInput && resultsDiv) {
-        locationInput.addEventListener("input", () => {
-            const query = locationInput.value.toLowerCase();
-            resultsDiv.innerHTML = "";
-            if (!query) return;
-
-            const matches = worldCapitals.filter(capital => capital.toLowerCase().includes(query));
-
-            matches.forEach(capital => {
-                const div = document.createElement("div");
-                div.textContent = capital;
-                div.style.padding = "5px";
-                div.style.cursor = "pointer";
-                div.addEventListener("click", () => {
-                    locationInput.value = capital;
-                    resultsDiv.innerHTML = "";
-                });
-                resultsDiv.appendChild(div);
-            });
-        });
-
-        document.addEventListener("click", e => {
-            if (!resultsDiv.contains(e.target) && e.target !== locationInput) {
-                resultsDiv.innerHTML = "";
-            }
-        });
-    }
 
     // ---------------------- CAMBIAR ROLES DE USUARIO ----------------------
     const roleButtons = document.querySelectorAll(".btn-promote, .btn-demote");
     roleButtons.forEach(button => {
         button.addEventListener("click", async (e) => {
             e.preventDefault();
-            const userId = button.getAttribute("data-user-id");
+            let userId = "";
+            if (button.id && button.id.startsWith("role-btn-")) {
+                userId = button.id.replace("role-btn-", "");
+            } else {
+                userId = button.getAttribute("data-user-id"); // Por si acaso queda alguno viejo
+            }
             try {
                 const response = await fetch(`/change-role/${userId}`, { method: "POST" });
                 if (response.ok) {

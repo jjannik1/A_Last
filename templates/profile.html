@@ -48,14 +48,14 @@
                 {% endfor %}
 
                 {% if ya_le_sigo %}
-                    <button class="follow-btn following" data-user-id="{{ user._id }}" 
+                    <button id="follow-btn-{{ user._id }}" class="follow-btn following" 
                             onmouseover="this.innerText='Dejar de seguir ❌'; this.style.background='var(--danger, #dc3545)'; this.style.color='white';" 
                             onmouseout="this.innerText='Siguiendo ✓'; this.style.background='rgba(255,255,255,0.1)'; this.style.color='var(--text-main)';" 
                             style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: background 0.2s, color 0.2s;">
                         Siguiendo ✓
                     </button>
                 {% else %}
-                    <button class="follow-btn btn-primary" data-user-id="{{ user._id }}" style="padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; border: none;">
+                    <button id="follow-btn-{{ user._id }}" class="follow-btn btn-primary" style="padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; border: none;">
                         Seguir
                     </button>
                 {% endif %}

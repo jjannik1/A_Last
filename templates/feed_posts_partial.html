@@ -31,7 +31,7 @@
     {% endif %}
 
     <div class="post-actions">
-        <span class="like-btn {% if request.session.user and request.session.user.id in post.likes %}liked{% endif %}" data-post-id="{{ post._id }}">
+        <span id="like-btn-{{ post._id }}" class="like-btn {% if request.session.user and request.session.user.id in post.likes %}liked{% endif %}">
             ❤️ <span class="likes-count">{{ post.likes|length }}</span>
         </span>
         <span onclick="toggleComments('{{ post._id }}')" class="comment-btn">
@@ -46,7 +46,7 @@
         {% if request.session.user %}
         <div class="new-comment">
             <input type="text" class="comment-input" placeholder="Escribe un comentario...">
-            <button class="comment-submit" data-post-id="{{ post._id }}">Enviar</button>
+            <button id="comment-submit-{{ post._id }}" class="comment-submit">Enviar</button>
         </div>
         {% endif %}
 
@@ -56,7 +56,7 @@
                 <b>{{ comment.username }}</b>: {{ comment.text }} <small>{{ comment.creationDateFormatted }}</small>
 
                 {% if request.session.user and request.session.user.id == comment.userId %}
-                    <button class="delete-comment-btn" data-comment-id="{{ comment._id }}">🗑</button>
+                    <button id="delete-comment-{{ comment._id }}" class="delete-comment-btn">🗑</button>
                 {% endif %}
             </div>
         {% endfor %}
