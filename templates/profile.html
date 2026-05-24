@@ -11,8 +11,15 @@
         
         <h2 style="margin-top: 15px; font-size: 2rem; font-weight: 800;">{{ user.username }}</h2>
         <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 20px;">
-            {% if user.name %}{{ user.name }} {{ user.surname1 }}{% else %}Usuario{% endif %}
-            {% if user.location %} • 📍 {{ user.location }}{% endif %}
+            {% if user.name %}
+                {{ user.name }} {{ user.surname1 }}
+            {% else %}
+                Usuario
+            {% endif %}
+
+            {% if user.location %}
+                 • 📍 {{ user.location }}
+            {% endif %}
         </p>
 
         <div style="display: flex; gap: 40px; margin-bottom: 25px; background: rgba(0,0,0,0.2); padding: 15px 40px; border-radius: 20px; border: 1px solid var(--border);">
@@ -48,14 +55,14 @@
                 {% endfor %}
 
                 {% if ya_le_sigo %}
-                    <button id="follow-btn-{{ user._id }}" class="follow-btn following" 
+                    <button id="follow-btn-{{ user._id }}" class="follow-btn following" data-id="{{ user._id }}"
                             onmouseover="this.innerHTML='<i class=\'fa-solid fa-user-minus\'></i> Dejar de seguir'; this.style.background='var(--danger, #dc3545)'; this.style.color='white';" 
                             onmouseout="this.innerHTML='<i class=\'fa-solid fa-user-check\'></i> Siguiendo'; this.style.background='rgba(255,255,255,0.1)'; this.style.color='var(--text-main)';" 
                             style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: background 0.2s, color 0.2s;">
                         <i class="fa-solid fa-user-check"></i> Siguiendo
                     </button>
                 {% else %}
-                    <button id="follow-btn-{{ user._id }}" class="follow-btn btn-primary" style="padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; border: none;">
+                    <button id="follow-btn-{{ user._id }}" class="follow-btn btn-primary" style="padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; border: none;" data-id="{{ user._id }}">
                         <i class="fa-solid fa-user-plus"></i> Seguir
                     </button>
                 {% endif %}

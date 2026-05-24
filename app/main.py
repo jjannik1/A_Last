@@ -673,7 +673,10 @@ async def toggle_block(user_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
     current_state = user_data.get("state", "active")
-    new_state = "blocked" if current_state == "active" else "active"
+    if current_state == "active":
+        new_state = "blocked"
+    else:
+        new_state = "active"
     
     await users_collection.update_one({"_id": obj_id}, {"$set": {"state": new_state}})
     return RedirectResponse(url=f"/profile/{user_id}", status_code=303)
@@ -1226,7 +1229,10 @@ async def change_role(user_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
     current_role = target_user.get("role", "user")
-    new_role = "user" if current_role == "admin" else "admin"
+    if current_role == "admin":
+        new_role = "user"
+    else:
+        new_role = "admin"
     
     await users_collection.update_one({"_id": obj_id}, {"$set": {"role": new_role}})
     return {"status": "success", "new_role": new_role}

@@ -11,14 +11,22 @@ document.addEventListener("DOMContentLoaded", () => {
         // 1. LÓGICA DE LIKES / DISLIKES
         const likeBtn = e.target.closest(".like-btn");
         if (likeBtn) {
-            if (likeBtn.dataset.busy === "true") return;
-            likeBtn.dataset.busy = "true";
+            if (likeBtn.getAttribute("data-busy") === "true") {
+                return;
+            }
+            likeBtn.setAttribute("data-busy", "true");
 
-            const postId = likeBtn.id.replace("like-btn-", "");
+            const postId = likeBtn.getAttribute("data-id") || likeBtn.id.replace("like-btn-", "");
             const liked = likeBtn.classList.contains("liked");
 
             try {
-                let res = await fetch(liked ? `/dislike/${postId}` : `/like/${postId}`, { method: "POST" });
+                let url = "";
+                if (liked) {
+                    url = `/dislike/${postId}`;
+                } else {
+                    url = `/like/${postId}`;
+                }
+                let res = await fetch(url, { method: "POST" });
                 
                 if (!res.ok) {
                     alert("Error al dar like/dislike. ¿Estás logueado?");
@@ -27,13 +35,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const data = await res.json();
                 const likesCountSpan = likeBtn.querySelector(".likes-count");
-                if (likesCountSpan) likesCountSpan.textContent = data.likes_count;
+                if (likesCountSpan) {
+                    likesCountSpan.textContent = data.likes_count;
+                }
 
                 likeBtn.classList.toggle("liked", data.liked);
             } catch (err) {
                 console.error(err);
             } finally {
-                likeBtn.dataset.busy = "false";
+                likeBtn.setAttribute("data-busy", "false");
             }
             return;
         }
@@ -41,10 +51,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // 2. LÓGICA DE ENVÍO DE COMENTARIOS
         const commentSubmitBtn = e.target.closest(".comment-submit");
         if (commentSubmitBtn) {
-            const postId = commentSubmitBtn.id.replace("comment-submit-", "");
-            const input = commentSubmitBtn.closest(".new-comment").querySelector(".comment-input");
+            const postId = commentSubmitBtn.getAttribute("data-id") || commentSubmitBtn.id.replace("comment-submit-", "");
+            const input = commentSubmitBtn.parentNode.querySelector(".comment-input");
             const text = input.value.trim();
-            if (!text) return;
+            if (!text) {
+                return;
+            }
 
             try {
                 const data = new FormData();
@@ -90,7 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     const commentBtn = postCard.querySelector(".comment-btn");
                     if (commentBtn) {
                         const countText = commentBtn.textContent.match(/\d+/);
-                        if (countText) commentBtn.innerHTML = `<i class="fa-solid fa-comment"></i> ${parseInt(countText[0]) + 1}`;
+                        if (countText) {
+                            commentBtn.innerHTML = `<i class="fa-solid fa-comment"></i> ${parseInt(countText[0]) + 1}`;
+                        }
                     }
                 }
 
@@ -103,8 +117,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // 3. LÓGICA DE BORRAR COMENTARIO
         const deleteCommentBtn = e.target.closest(".delete-comment-btn");
         if (deleteCommentBtn) {
-            const commentId = deleteCommentBtn.id.replace("delete-comment-", "");
-            if (!commentId) return;
+            const commentId = deleteCommentBtn.getAttribute("data-id") || deleteCommentBtn.id.replace("delete-comment-", "");
+            if (!commentId) {
+                return;
+            }
 
             try {
                 const res = await fetch(`/delete-my-comment/${commentId}`, { method: "POST" });
@@ -118,13 +134,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (data.success) {
                     const commentDiv = document.getElementById(`comment-${commentId}`);
-                    if (commentDiv) commentDiv.remove();
+                    if (commentDiv) {
+                        commentDiv.remove();
+                    }
 
                     const postDiv = deleteCommentBtn.closest(".post-card");
                     const commentBtn = postDiv.querySelector(".comment-btn");
                     if (commentBtn) {
                         const countText = commentBtn.textContent.match(/\d+/);
-                        if (countText) commentBtn.textContent = `💬 ${parseInt(countText[0]) - 1}`;
+                        if (countText) {
+                            commentBtn.textContent = `💬 ${parseInt(countText[0]) - 1}`;
+                        }
                     }
                 }
 
@@ -140,14 +160,22 @@ document.addEventListener("DOMContentLoaded", () => {
         const followBtn = e.target.closest(".follow-btn");
         if (followBtn) {
             e.preventDefault();
-            if (followBtn.dataset.busy === "true") return;
-            followBtn.dataset.busy = "true";
+            if (followBtn.getAttribute("data-busy") === "true") {
+                return;
+            }
+            followBtn.setAttribute("data-busy", "true");
 
-            const userId = followBtn.id.replace("follow-btn-", "");
+            const userId = followBtn.getAttribute("data-id") || followBtn.id.replace("follow-btn-", "");
             const isFollowing = followBtn.classList.contains("following");
 
             try {
-                let res = await fetch(isFollowing ? `/unfollow/${userId}` : `/follow/${userId}`, { method: "POST" });
+                let url = "";
+                if (isFollowing) {
+                    url = `/unfollow/${userId}`;
+                } else {
+                    url = `/follow/${userId}`;
+                }
+                let res = await fetch(url, { method: "POST" });
                 
                 if (!res.ok) {
                     alert("Error. ¿Estás logueado?");
@@ -158,7 +186,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 if (data.success) {
                     const followersCountDiv = document.getElementById("followers-count");
-                    if (followersCountDiv) followersCountDiv.textContent = data.followers_count;
+                    if (followersCountDiv) {
+                        followersCountDiv.textContent = data.followers_count;
+                    }
 
                     if (data.following) {
                         followBtn.classList.add("following");
@@ -167,8 +197,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         followBtn.style.color = "var(--text-main)";
                         followBtn.style.border = "1px solid var(--border)";
                         followBtn.className = "follow-btn following";
-                        followBtn.onmouseover = function() { this.innerText='Dejar de seguir ❌'; this.style.background='var(--danger, #dc3545)'; this.style.color='white'; };
-                        followBtn.onmouseout = function() { this.innerText='Siguiendo ✓'; this.style.background='rgba(255,255,255,0.1)'; this.style.color='var(--text-main)'; };
+                        followBtn.onmouseover = function() {
+                            this.innerText = 'Dejar de seguir ❌';
+                            this.style.background = 'var(--danger, #dc3545)';
+                            this.style.color = 'white';
+                        };
+                        followBtn.onmouseout = function() {
+                            this.innerText = 'Siguiendo ✓';
+                            this.style.background = 'rgba(255,255,255,0.1)';
+                            this.style.color = 'var(--text-main)';
+                        };
                     } else {
                         followBtn.classList.remove("following");
                         followBtn.innerText = "Seguir";
@@ -187,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (err) {
                 console.error(err);
             } finally {
-                followBtn.dataset.busy = "false";
+                followBtn.setAttribute("data-busy", "false");
             }
         }
     });
@@ -195,14 +233,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // ---------------------- TOGGLE COMENTARIOS ----------------------
     window.toggleComments = (postId) => {
         const div = document.getElementById(`comments-${postId}`);
-        if (div) div.classList.toggle("hidden");
+        if (div) {
+            div.classList.toggle("hidden");
+        }
     };
 
     // ---------------------- NAVBAR: HORA + CLIMA ----------------------
     async function updateNavbarInfo() {
         try {
             const res = await fetch("/navbar-info");
-            if (!res.ok) return;
+            if (!res.ok) {
+                return;
+            }
 
             const data = await res.json();
             const timeEl = document.getElementById("time");
@@ -283,7 +325,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (loadMoreBtn && postsContainer) {
         loadMoreBtn.addEventListener("click", async () => {
-            if (feedLoading) return;
+            if (feedLoading) {
+                return;
+            }
             feedLoading = true;
             
             loadMoreBtn.disabled = true;
@@ -309,7 +353,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 // Inyectamos los posts al final del contenedor
-                postsContainer.insertAdjacentHTML("beforeend", html);
+                postsContainer.innerHTML = postsContainer.innerHTML + html;
                 
                 loadMoreBtn.disabled = false;
                 loadMoreBtn.textContent = "Cargar más publicaciones";
