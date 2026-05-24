@@ -32,13 +32,13 @@
 
     <div class="post-actions">
         <span id="like-btn-{{ post._id }}" class="like-btn {% if request.session.user and request.session.user.id in post.likes %}liked{% endif %}">
-            ❤️ <span class="likes-count">{{ post.likes|length }}</span>
+            <i class="fa-solid fa-heart"></i> <span class="likes-count">{{ post.likes|length }}</span>
         </span>
         <span onclick="toggleComments('{{ post._id }}')" class="comment-btn">
-            💬 {{ post.comments|length }}
+            <i class="fa-solid fa-comment"></i> {{ post.comments|length }}
         </span>
         <a href="/post/{{ post._id }}" style="text-decoration: none; margin-left: auto; font-size: 0.9rem; font-weight: bold; color: var(--primary);">
-            👀 Abrir post
+            <i class="fa-solid fa-eye"></i> Abrir post
         </a>
     </div>
 
@@ -55,8 +55,8 @@
             <div class="comment" id="comment-{{ comment._id }}">
                 <b>{{ comment.username }}</b>: {{ comment.text }} <small>{{ comment.creationDateFormatted }}</small>
 
-                {% if request.session.user and request.session.user.id == comment.userId %}
-                    <button id="delete-comment-{{ comment._id }}" class="delete-comment-btn">🗑</button>
+                {% if request.session.user and (request.session.user.id == comment.userId or request.session.user.role == "admin") %}
+                    <button id="delete-comment-{{ comment._id }}" class="delete-comment-btn"><i class="fa-solid fa-trash"></i></button>
                 {% endif %}
             </div>
         {% endfor %}

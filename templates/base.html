@@ -5,6 +5,7 @@
     <title>SocialApp</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/style.css?v=6">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="/static/app.js?v=3"></script>
 </head>
 
@@ -23,10 +24,10 @@
 
         <div class="nav-right">
             {% if request.session.get("user") %}
-            <a href="/create-post" class="btn-post">➕ Nuevo post</a>
+            <a href="/create-post" class="btn-post"><i class="fa-solid fa-plus"></i> Nuevo post</a>
             <span class="welcome">Bienvenido, <b>{{ request.session.user.username }}</b></span>
-            <a href="/profile/{{ request.session.user.id }}">Perfil</a>
-            <a href="/config">⚙</a>
+            <a href="/profile/{{ request.session.user.id }}"><i class="fa-solid fa-user"></i> Perfil</a>
+            <a href="/config" title="Ajustes"><i class="fa-solid fa-gear"></i></a>
             <div id="navbar-info">
                 <span id="user-location"></span>
                 <span id="time"></span>

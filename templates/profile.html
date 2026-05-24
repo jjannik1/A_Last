@@ -49,20 +49,20 @@
 
                 {% if ya_le_sigo %}
                     <button id="follow-btn-{{ user._id }}" class="follow-btn following" 
-                            onmouseover="this.innerText='Dejar de seguir ❌'; this.style.background='var(--danger, #dc3545)'; this.style.color='white';" 
-                            onmouseout="this.innerText='Siguiendo ✓'; this.style.background='rgba(255,255,255,0.1)'; this.style.color='var(--text-main)';" 
+                            onmouseover="this.innerHTML='<i class=\'fa-solid fa-user-minus\'></i> Dejar de seguir'; this.style.background='var(--danger, #dc3545)'; this.style.color='white';" 
+                            onmouseout="this.innerHTML='<i class=\'fa-solid fa-user-check\'></i> Siguiendo'; this.style.background='rgba(255,255,255,0.1)'; this.style.color='var(--text-main)';" 
                             style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: background 0.2s, color 0.2s;">
-                        Siguiendo ✓
+                        <i class="fa-solid fa-user-check"></i> Siguiendo
                     </button>
                 {% else %}
                     <button id="follow-btn-{{ user._id }}" class="follow-btn btn-primary" style="padding: 10px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; border: none;">
-                        Seguir
+                        <i class="fa-solid fa-user-plus"></i> Seguir
                     </button>
                 {% endif %}
             {% endif %}
 
             {% if request.session.user and request.session.user.id == user._id|string %}
-                <a href="/config" style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px; font-weight: 600; display: inline-block; text-decoration: none;">Editar Perfil</a>
+                <a href="/config" style="background: rgba(255,255,255,0.1); color: var(--text-main); border: 1px solid var(--border); padding: 10px 25px; border-radius: 30px; font-weight: 600; display: inline-block; text-decoration: none;"><i class="fa-solid fa-pen"></i> Editar Perfil</a>
             {% endif %}
         </div>
     </div>
@@ -126,7 +126,7 @@
             
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
                 <div style="color: var(--text-muted); font-size: 0.85rem;">
-                    ❤️ {{ post.likes|length }} • 💬 {{ post.comments|length }}
+                    <i class="fa-solid fa-heart"></i> {{ post.likes|length }} • <i class="fa-solid fa-comment"></i> {{ post.comments|length }}
                 </div>
 
                 <a href="/post/{{ post._id }}" style="color: var(--primary); font-size: 0.9rem; font-weight: bold; text-decoration: none; margin-left: 10px;">
@@ -135,7 +135,7 @@
                 
                 {% if request.session.user and (request.session.user.id == user._id|string or request.session.user.role == "admin") %}
                     <form action="/delete-my-post/{{ post._id }}" method="post" onsubmit="return confirm('¿Seguro que quieres borrar este post?')" style="margin:0;">
-                        <button type="submit" style="background: transparent; border: none; color: var(--danger); cursor: pointer; padding: 5px;">🗑</button>
+                        <button type="submit" style="background: transparent; border: none; color: var(--danger); cursor: pointer; padding: 5px;" title="Borrar post"><i class="fa-solid fa-trash"></i></button>
                     </form>
                 {% endif %}
             </div>

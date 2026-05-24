@@ -2,8 +2,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const currentUser = window.currentUser || null;
     const postsContainer = document.getElementById("posts-container") || document.body;
 
-    // ---------------------- DELEGACIÓN DE EVENTOS (LIKES / COMENTARIOS) ----------------------
-    // Escuchamos los clics en el contenedor principal para que funcione en elementos viejos y nuevos
+    // ---------------------- DELEGACIÓN DE EVENTOS PRINCIPAL ----------------------
+    // Escuchamos todos los clics que ocurran dentro del contenedor de publicaciones.
+    // Usamos delegación de eventos para que funcione incluso en las publicaciones que se
+    // cargan dinámicamente más tarde (por ejemplo, al darle a 'Cargar más' o enviar un comentario nuevo).
     postsContainer.addEventListener("click", async (e) => {
         
         // 1. LÓGICA DE LIKES / DISLIKES
@@ -76,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     newComment.classList.add("comment");
                     const newId = commentData._id || commentData.id;
                     newComment.id = "comment-" + newId;
-                    newComment.innerHTML = "<b>" + (commentData.username || currentUser) + "</b>: " + commentData.text + " <small>" + formattedDate + "</small> <button id='delete-comment-" + newId + "' class='delete-comment-btn'>🗑</button>";
+                    newComment.innerHTML = "<b>" + (commentData.username || currentUser) + "</b>: " + commentData.text + " <small>" + formattedDate + "</small> <button id='delete-comment-" + newId + "' class='delete-comment-btn'><i class='fa-solid fa-trash'></i></button>";
                     commentsDiv.appendChild(newComment);
                 }
 
@@ -88,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const commentBtn = postCard.querySelector(".comment-btn");
                     if (commentBtn) {
                         const countText = commentBtn.textContent.match(/\d+/);
-                        if (countText) commentBtn.textContent = `💬 ${parseInt(countText[0]) + 1}`;
+                        if (countText) commentBtn.innerHTML = `<i class="fa-solid fa-comment"></i> ${parseInt(countText[0]) + 1}`;
                     }
                 }
 
@@ -209,31 +211,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (data.location !== undefined && data.location !== null) {
                 if (locationEl !== null) {
-                    locationEl.textContent = data.location;
+                    locationEl.innerHTML = '<i class="fa-solid fa-location-dot"></i> ' + data.location;
                 }
             } else {
                 if (locationEl !== null) {
-                    locationEl.textContent = "Sin ubicación";
+                    locationEl.innerHTML = '<i class="fa-solid fa-location-dot"></i> Sin ubicación';
                 }
             }
 
             if (data.time !== undefined && data.time !== null) {
                 if (timeEl !== null) {
-                    timeEl.textContent = "🕒 " + data.time;
+                    timeEl.innerHTML = '<i class="fa-regular fa-clock"></i> ' + data.time;
                 }
             } else {
                 if (timeEl !== null) {
-                    timeEl.textContent = "🕒 --:--";
+                    timeEl.innerHTML = '<i class="fa-regular fa-clock"></i> --:--';
                 }
             }
 
             if (data.weather !== undefined && data.weather !== null) {
                 if (weatherEl !== null) {
-                    weatherEl.textContent = "🌡 " + data.weather.temperature + "°C, 🌬 " + data.weather.windspeed + " km/h";
+                    weatherEl.innerHTML = '<i class="fa-solid fa-temperature-half"></i> ' + data.weather.temperature + "°C, <i class='fa-solid fa-wind'></i> " + data.weather.windspeed + " km/h";
                 }
             } else {
                 if (weatherEl !== null) {
-                    weatherEl.textContent = "🌡 --°C";
+                    weatherEl.innerHTML = '<i class="fa-solid fa-temperature-half"></i> --°C';
                 }
             }
         } catch (err) {
@@ -272,7 +274,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// ---------------------- NUEVO BOTÓN: CARGAR MÁS POSTS (SUSTITUYE AL SCROLL) ----------------------
+// ---------------------- PAGINACIÓN: CARGAR MÁS POSTS ----------------------
+// Función que pide al backend el siguiente lote de publicaciones y las añade al final de la página.
 document.addEventListener("DOMContentLoaded", () => {
     const loadMoreBtn = document.getElementById("load-more-btn");
     const postsContainer = document.getElementById("posts-container");

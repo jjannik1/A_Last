@@ -86,8 +86,7 @@ async def register_user(
     surname1: str = Form(...),
     surname2: str = Form(None),
     profile_image: UploadFile = File(None),
-    location: str = Form(...)  # <--- nuevo campo
-
+    location: str = Form(...)  # Campo para guardar la localidad o ciudad
 ):
     if await users_collection.find_one({"email": email}):
         return templates.TemplateResponse(request, "register.html", {"request": request, "error": "Email ya registrado"})
@@ -303,12 +302,13 @@ async def profile(request: Request, userid: str):
 
     session_user = request.session.get("user")
 
-    # 1️⃣ SOLUCIÓN AL ROL: Cambiado 'rol' por 'role' para que coincida con el login
+    # Comprobamos si el usuario actual es el dueño del perfil o un administrador del sistema.
     if session_user and (
         session_user["id"] == userid or
         session_user.get("role") == "admin"
     ):
-        # 2️⃣ SOLUCIÓN AL TYPE: Busca tanto si el ID se guardó como ObjectId o como string
+        # Si tiene permisos, puede ver TODAS las publicaciones (tanto las públicas como las privadas).
+        # (Se busca tanto por ObjectId como por string para asegurar retrocompatibilidad en la BBDD).
         query = {"userId": {"$in": [obj_user_id, userid]}}
 
     # Si es un visitante externo u otro usuario, solo ve los públicos
@@ -361,7 +361,7 @@ async def update_config(
     location: str = Form(None),
     current_password: str = Form(None),
     new_password: str = Form(None),
-    profile_image: UploadFile = File(None)  # 👈 NUEVO
+    profile_image: UploadFile = File(None)  # Campo opcional para subir nueva foto de perfil
 ):
     user = request.session.get("user")
     if not user:
@@ -556,7 +556,10 @@ async def delcom(request: Request, commentid: str):
 
     comment = await comments_collection.find_one({"_id": objcomm})
 
-    if not comment or comment["userId"] != objuser:
+    if not comment:
+        return JSONResponse({"error": "No encontrado"}, status_code=404)
+
+    if comment["userId"] != objuser and user.get("role") != "admin":
         return JSONResponse({"error": "No autorizado"}, status_code=403)
 
     # Borrar comentario
