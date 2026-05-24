@@ -52,15 +52,7 @@
                 <input type="text" name="location" placeholder="Ciudad o localidad" value="{{ user.location }}">
             </div>
 
-            <h3 style="margin-top: 40px; margin-bottom: 20px; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Preferencias</h3>
 
-            <div class="form-group">
-                <label>Tema de la aplicación</label>
-                <select name="theme" style="width: 100%; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); border-radius: 12px; padding: 15px; outline: none; appearance: none;">
-                    <option value="light" {% if user.theme == 'light' %}selected{% endif %}>Modo Claro</option>
-                    <option value="dark" {% if user.theme == 'dark' %}selected{% endif %}>Modo Oscuro</option>
-                </select>
-            </div>
 
             <button type="submit" class="btn-primary" style="width: 100%; margin-top: 15px; padding: 14px; font-size: 1.1rem; border-radius: 12px;">Guardar cambios</button>
         </form>

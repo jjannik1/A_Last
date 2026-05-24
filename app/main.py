@@ -27,10 +27,12 @@ ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"]
 
 UPLOAD_DIR_IMAGES = "static/uploads/post_images"
 UPLOAD_DIR_VIDEOS = "static/uploads/post_videos"
+UPLOAD_DIR_PROFILE = "static/uploads/profile_pictures"
 FEED_PAGE_LIMIT = 10
 
 os.makedirs(UPLOAD_DIR_IMAGES, exist_ok=True)
 os.makedirs(UPLOAD_DIR_VIDEOS, exist_ok=True)
+os.makedirs(UPLOAD_DIR_PROFILE, exist_ok=True)
 
 # =====================================================
 # APP CONFIG
@@ -83,7 +85,7 @@ async def register_user(
     name: str = Form(...),
     surname1: str = Form(...),
     surname2: str = Form(None),
-    profile_image: UploadFile = File(...),
+    profile_image: UploadFile = File(None),
     location: str = Form(...)  # <--- nuevo campo
 
 ):
@@ -93,16 +95,18 @@ async def register_user(
     if await users_collection.find_one({"username": username}):
         return templates.TemplateResponse(request, "register.html", {"request": request, "error": "Usuario ya en uso"})
 
-    filename = f"{username}_{profile_image.filename}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
+    ruta_imagen = None
+    if profile_image and profile_image.filename:
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f"{timestamp}-{profile_image.filename}"
+        file_path = os.path.join(UPLOAD_DIR_PROFILE, filename)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(profile_image.file, buffer)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(profile_image.file, buffer)
+
+        ruta_imagen = f"/{UPLOAD_DIR_PROFILE}/{filename}".replace("\\", "/")
 
     hashed_password = pbkdf2_sha256.hash(password)
-
-    ruta_imagen = f"/static/uploads/{filename}"
-
 
     await users_collection.insert_one({
     "username": username,
@@ -117,7 +121,6 @@ async def register_user(
     "register_date": datetime.utcnow(),
     "rol": "user",
     "state": "active",
-    "theme": "light",
     "location": location  # <--- guardar localidad
 })
 
@@ -355,7 +358,6 @@ async def update_config(
     surname1: str = Form(None),
     surname2: str = Form(None),
     email: str = Form(None),
-    theme: str = Form(None),
     location: str = Form(None),
     current_password: str = Form(None),
     new_password: str = Form(None),
@@ -382,13 +384,14 @@ async def update_config(
             if os.path.exists(old_path):
                 os.remove(old_path)
 
-        filename = f"{user_data['username']}_{profile_image.filename}"
-        file_path = os.path.join(UPLOAD_DIR, filename)
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f"{timestamp}-{profile_image.filename}"
+        file_path = os.path.join(UPLOAD_DIR_PROFILE, filename)
 
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(profile_image.file, buffer)
 
-        update_data["profile_image"] = f"/static/uploads/{filename}"
+        update_data["profile_image"] = f"/{UPLOAD_DIR_PROFILE}/{filename}".replace("\\", "/")
 
     # =========================
     # CAMBIO CONTRASEÑA
@@ -434,8 +437,6 @@ async def update_config(
         update_data["surname1"] = surname1
     if surname2:
         update_data["surname2"] = surname2
-    if theme:
-        update_data["theme"] = theme
     if location:
         update_data["location"] = location
 
@@ -734,8 +735,8 @@ async def create_post(
 
             content = await f.read()
             size = len(content)
-            extension = f.filename.split(".")[-1]
-            filename = f"{uuid4().hex}.{extension}"
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            filename = f"{timestamp}-{f.filename}"
 
             if f.content_type in ALLOWED_IMAGE_TYPES:
                 if size > MAX_IMAGE_SIZE:
