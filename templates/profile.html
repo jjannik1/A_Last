@@ -128,6 +128,10 @@
                 <div style="color: var(--text-muted); font-size: 0.85rem;">
                     ❤️ {{ post.likes|length }} • 💬 {{ post.comments|length }}
                 </div>
+
+                <a href="/post/{{ post._id }}" style="color: var(--primary); font-size: 0.9rem; font-weight: bold; text-decoration: none; margin-left: 10px;">
+                    Ver post →
+                </a>
                 
                 {% if request.session.user and (request.session.user.id == user._id|string or request.session.user.role == "admin") %}
                     <form action="/delete-my-post/{{ post._id }}" method="post" onsubmit="return confirm('¿Seguro que quieres borrar este post?')" style="margin:0;">

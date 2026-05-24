@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="posts-container" style="max-width: 600px; margin: 0 auto; padding-top: 20px;">
+    <h2 style="margin-bottom: 20px; text-align: center;">Detalle del Post</h2>
+    <div style="margin-bottom: 20px;">
+        <a href="/" style="color: var(--text-muted); text-decoration: none;">← Volver al inicio</a>
+    </div>
+    {% include 'feed_posts_partial.html' %}
+</div>
+{% endblock %}

@@ -37,6 +37,9 @@
         <span onclick="toggleComments('{{ post._id }}')" class="comment-btn">
             💬 {{ post.comments|length }}
         </span>
+        <a href="/post/{{ post._id }}" style="text-decoration: none; margin-left: auto; font-size: 0.9rem; font-weight: bold; color: var(--primary);">
+            👀 Abrir post
+        </a>
     </div>
 
     <div id="comments-{{ post._id }}" class="comments hidden">

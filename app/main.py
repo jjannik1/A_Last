@@ -1111,6 +1111,65 @@ async def feed_load_more(request: Request):
         "posts": enriched_posts
     })
 
+@app.get("/post/{post_id}", response_class=HTMLResponse)
+async def view_post(request: Request, post_id: str):
+    user = request.session.get("user")
+    
+    try:
+        obj_id = ObjectId(post_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="ID de post inválido")
+        
+    post = await posts_collection.find_one({"_id": obj_id})
+    if not post:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+        
+    # Verificar visibilidad
+    if post.get("visibility") == "private":
+        if not user:
+            return RedirectResponse("/login", status_code=303)
+            
+        # Es privado, solo puede verlo el dueño o alguien que le sigue (o admin)
+        if str(post["userId"]) != user["id"] and user.get("role") != "admin":
+            user_data = await users_collection.find_one({"_id": ObjectId(user["id"])})
+            following_ids = [str(uid) for uid in user_data.get("following", [])]
+            if str(post["userId"]) not in following_ids:
+                raise HTTPException(status_code=403, detail="Esta publicación es privada. Necesitas seguir al usuario para verla.")
+
+    # Enriquecer el post
+    post_user = await users_collection.find_one({"_id": post["userId"]})
+    post["username"] = post_user["username"] if post_user else "Usuario"
+    post["profile_image"] = post_user.get("profile_image")
+
+    comment_objects = []
+    from datetime import timezone
+    for comment_id in post.get("comments", []):
+        comment = await comments_collection.find_one({"_id": comment_id})
+        if comment:
+            comment_user = await users_collection.find_one({"_id": comment["userId"]})
+            comment["username"] = comment_user["username"] if comment_user else "Usuario"
+            comment["userId"] = str(comment["userId"])
+
+            if "creationDate" in comment:
+                dt = comment["creationDate"]
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                comment["creationDateFormatted"] = dt.strftime("%H:%M %d/%m/%y")
+            else:
+                comment["creationDateFormatted"] = ""
+            comment_objects.append(comment)
+
+    post["comment_objects"] = comment_objects
+    post["likes_count"] = len(post.get("likes", []))
+    post["_id"] = str(post["_id"])
+
+    # Pasamos el post dentro de una lista para reutilizar feed_posts_partial.html
+    return templates.TemplateResponse(request, "post_detail.html", {
+        "request": request,
+        "user": user,
+        "posts": [post]
+    })
+
 
 
 @app.post("/change-role/{user_id}")
