@@ -739,7 +739,7 @@ async def create_post(
 
             if f.content_type in ALLOWED_IMAGE_TYPES:
                 if size > MAX_IMAGE_SIZE:
-                    raise HTTPException(status_code=400, detail=f"Imagen demasiado grande: {f.filename}")
+                    return templates.TemplateResponse(request, "create_post.html", {"request": request, "user": user, "error": f"La imagen '{f.filename}' es demasiado grande (máximo 10MB)."})
                 file_path = os.path.join(UPLOAD_DIR_IMAGES, filename)
                 with open(file_path, "wb") as buf:
                     buf.write(content)
@@ -747,14 +747,14 @@ async def create_post(
 
             elif f.content_type in ALLOWED_VIDEO_TYPES:
                 if size > MAX_VIDEO_SIZE:
-                    raise HTTPException(status_code=400, detail=f"Video demasiado grande: {f.filename}")
+                    return templates.TemplateResponse(request, "create_post.html", {"request": request, "user": user, "error": f"El video '{f.filename}' es demasiado grande (máximo 50MB)."})
                 file_path = os.path.join(UPLOAD_DIR_VIDEOS, filename)
                 with open(file_path, "wb") as buf:
                     buf.write(content)
                 videos_urls.append("/" + file_path.replace("\\", "/"))
 
             else:
-                raise HTTPException(status_code=400, detail=f"Tipo de archivo no permitido: {f.filename}")
+                return templates.TemplateResponse(request, "create_post.html", {"request": request, "user": user, "error": f"El archivo '{f.filename}' no es válido. Solo se permiten imágenes y videos."})
 
     await posts_collection.insert_one({
         "userId": ObjectId(user["id"]),

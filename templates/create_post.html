@@ -3,6 +3,12 @@
 {% block content %}
 <h2>Crear un nuevo post</h2>
 
+{% if error %}
+<div style="background-color: rgba(220, 53, 69, 0.1); color: var(--danger, #dc3545); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(220, 53, 69, 0.2); font-weight: 500;">
+    ⚠️ {{ error }}
+</div>
+{% endif %}
+
 <form action="/create-post" method="post" enctype="multipart/form-data">
     <textarea name="text" placeholder="¿Qué estás pensando?" required></textarea>
     
