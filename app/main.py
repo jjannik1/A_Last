@@ -1,18 +1,19 @@
 from motor.motor_asyncio import AsyncIOMotorClient
-from fastapi import FastAPI, Form, Request, HTTPException, Query, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Form, Request, HTTPException, Query, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from passlib.hash import pbkdf2_sha256
 from datetime import datetime
+from datetime import timezone
 from bson.objectid import ObjectId
 from random import sample
-from starlette.middleware.base import BaseHTTPMiddleware
 import shutil
 import os
 from uuid import uuid4
 import random
+from random import shuffle
 import httpx
 import pytz
 from dotenv import load_dotenv
@@ -30,6 +31,8 @@ UPLOAD_DIR_VIDEOS = "static/uploads/post_videos"
 UPLOAD_DIR_PROFILE = "static/uploads/profile_pictures"
 FEED_PAGE_LIMIT = 10
 
+# Si tiene existe no dara problemas el parametro exist_ok=True
+
 os.makedirs(UPLOAD_DIR_IMAGES, exist_ok=True)
 os.makedirs(UPLOAD_DIR_VIDEOS, exist_ok=True)
 os.makedirs(UPLOAD_DIR_PROFILE, exist_ok=True)
@@ -39,9 +42,15 @@ os.makedirs(UPLOAD_DIR_PROFILE, exist_ok=True)
 # =====================================================
 
 app = FastAPI()
+#Usamos jinja2 para renderizar html, esta en la carpeta templates
 templates = Jinja2Templates(directory="templates")
 
+#Montamos staticfiles para poder acceder a los archivos estaticos si no lo tenemos, no podramos acceder a esos archivos estaticos
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+#Usamos session middleware para gestionar sesiones
+#Un middleware es la conexion entre el frontend y el backend, antes de que la peticion llegue al backend se ejecuta el middleware
+#Se usa para guardar datos del usuario entre peticiones
 app.add_middleware(SessionMiddleware, secret_key="supersecreto")
 
 UPLOAD_DIR = "static/uploads"
@@ -60,15 +69,9 @@ users_collection = db["usuarios"]
 posts_collection = db["post"]
 comments_collection = db["comentarios"]
 
-# =====================================================
-# MIDDLEWARE USER
-# =====================================================
-# Primero SessionMiddleware
-
-
 
 # =====================================================
-# AUTH
+# REGISTER
 # =====================================================
 
 @app.get("/register", response_class=HTMLResponse)
@@ -86,8 +89,9 @@ async def register_user(
     surname1: str = Form(...),
     surname2: str = Form(None),
     profile_image: UploadFile = File(None),
-    location: str = Form(...)  # Campo para guardar la localidad o ciudad
+    location: str = Form(...)  # Campo necesario para poder poner el tiempo y el clima de esa localidad
 ):
+# Si existe uno de esos dara fallo con un mensaje de error
     if await users_collection.find_one({"email": email}):
         return templates.TemplateResponse(request, "register.html", {"request": request, "error": "Email ya registrado"})
 
@@ -96,12 +100,14 @@ async def register_user(
 
     ruta_imagen = None
     if profile_image and profile_image.filename:
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = f"{timestamp}-{profile_image.filename}"
+
+        filename = profile_image.filename
         file_path = os.path.join(UPLOAD_DIR_PROFILE, filename)
 
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(profile_image.file, buffer)
+        #Metemox el archivo binario (b en wb) y lo leemos y lo guardamos
+
+        with open(file_path, "wb") as f:
+            f.write(await profile_image.read())  # <-- leer y guardar foto de perfil
 
         ruta_imagen = f"/{UPLOAD_DIR_PROFILE}/{filename}".replace("\\", "/")
 
@@ -120,7 +126,7 @@ async def register_user(
     "register_date": datetime.utcnow(),
     "rol": "user",
     "state": "active",
-    "location": location  # <--- guardar localidad
+    "location": location
 })
 
 
@@ -153,7 +159,7 @@ async def login_user(request: Request, username: str = Form(...), password: str 
         "location": user.get("location", "No especificada")
     }
 
-    # 👇 SI ES ADMIN, REDIRIGIR AL DASHBOARD DIRECTAMENTE
+    #  SI ES ADMIN, REDIRIGIR AL DASHBOARD DIRECTAMENTE
     if user.get("role") == "admin":
         return RedirectResponse("/admin/dashboard", status_code=303)
 
@@ -173,7 +179,7 @@ async def logout(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
 
-    # 1. COMPROBACIÓN Y CREACIÓN DEL ADMIN AUTOMÁTICO (Con passlib)
+    # 1. COMPROBACIÓN Y CREACIÓN DEL ADMIN AUTOMÁTICO
     admin_user = await users_collection.find_one({"username": "admin"})
     if not admin_user:
         # Hasheamos la contraseña de forma segura con pbkdf2_sha256
@@ -215,7 +221,14 @@ async def home(request: Request):
         }).sort("creacionDate", -1)
 
         posts = await cursor_following.to_list(length=20)
-        seen_posts.extend([str(p["_id"]) for p in posts])
+        for post in posts:
+
+            post_id = post["_id"]
+
+            post_id_str = str(post_id)
+
+            seen_posts.append(post_id_str)
+
 
         # 2. Si faltan para llegar a 20, rellenar con posts públicos aleatorios (que no sean de los seguidos ni mios)
         if len(posts) < 20:
@@ -223,28 +236,42 @@ async def home(request: Request):
             cursor_others = posts_collection.find({
                 "visibility": "public",
                 "userId": {"$nin": exclude_ids}
+                #nin = Not in, busqueda de mongodb exclusivo
             })
             other_posts = await cursor_others.to_list(length=None)
-            import random
             random.shuffle(other_posts)
             needed = 20 - len(posts)
-            posts.extend(other_posts[:needed])
-            seen_posts.extend([str(p["_id"]) for p in other_posts[:needed]])
+            for post in other_posts[:needed]:
 
+                # Añadir post a la lista principal
+                posts.append(post)
+
+                # Obtener id del post
+                post_id = post["_id"]
+
+                # Convertir ObjectId a string
+                post_id_str = str(post_id)
+
+                seen_posts.append(post_id_str)
         request.session["seen_posts"] = seen_posts
 
     else:
         # Usuario no logueado: solo posts públicos aleatorios
         cursor = posts_collection.find({"visibility": "public"})
+        #Daba fallo porque el motor de mongo necesita el parametro lenght si no, no funciona
         all_public = await cursor.to_list(length=None)
-        import random
         random.shuffle(all_public)
         posts = all_public[:20]
-        request.session["seen_posts"] = [str(p["_id"]) for p in posts]
+        for post in posts:
+
+            post_id = post["_id"]
+            post_id_str = str(post_id)
+            seen_posts.append(post_id_str)
+
+        request.session["seen_posts"] = seen_posts
 
     # Enriquecemos los posts con usuario, comentarios y likes
     enriched_posts = []
-    from datetime import timezone
     for post in posts:
         post_user = await users_collection.find_one({"_id": post["userId"]})
         if not post_user:
@@ -264,8 +291,6 @@ async def home(request: Request):
 
                 if "creationDate" in comment:
                     dt = comment["creationDate"]
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
                     comment["creationDateFormatted"] = dt.strftime("%H:%M %d/%m/%y")
                 else:
                     comment["creationDateFormatted"] = ""
@@ -318,8 +343,9 @@ async def profile(request: Request, userid: str):
             "visibility": "public"
         }
 
+#Mostrar todos los posts, los recientes primeros
     posts_cursor = posts_collection.find(query).sort("creacionDate", -1)
-    posts = await posts_cursor.to_list(length=50)
+    posts = await posts_cursor.to_list(length=None)
 
     # Convertimos los _id a string para que Jinja2 no tenga problemas al renderizarlos
     user_data["_id"] = str(user_data["_id"])
@@ -389,7 +415,7 @@ async def update_config(
         file_path = os.path.join(UPLOAD_DIR_PROFILE, filename)
 
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(profile_image.file, buffer)
+            buffer.write(await profile_image.read())
 
         update_data["profile_image"] = f"/{UPLOAD_DIR_PROFILE}/{filename}".replace("\\", "/")
 
@@ -460,46 +486,42 @@ async def delete_my_account(request: Request):
 
     obj_id = ObjectId(user["id"])
 
-    # 1️⃣ Quitarme de followers/following de otros
+    #  Quitarme de followers/following de otros
     await users_collection.update_many(
-        {"followers": user["id"]},
-        {"$pull": {"followers": user["id"]}}
+        {"followers": {"$in": [obj_id, user["id"]]}},
+        {"$pull": {"followers": {"$in": [obj_id, user["id"]]}}}
     )
     await users_collection.update_many(
-        {"following": user["id"]},
-        {"$pull": {"following": user["id"]}}
+        {"following": {"$in": [obj_id, user["id"]]}},
+        {"$pull": {"following": {"$in": [obj_id, user["id"]]}}}
     )
 
-    # 2️⃣ Eliminar comentarios del usuario y guardar IDs
+    # Eliminar comentarios del usuario y guardar IDs
     deleted_comments_cursor = comments_collection.find({"userId": obj_id}, {"_id": 1})
-    deleted_comment_ids = [c["_id"] async for c in deleted_comments_cursor]
-    await comments_collection.delete_many({"userId": obj_id})
+    deleted_comment_ids = []
 
-    # 3️⃣ Limpiar comentarios del usuario en posts existentes
+    async for comment in deleted_comments_cursor:
+        deleted_comment_ids.append(comment["_id"])
+
+    #  Limpiar comentarios del usuario en posts existentes
     if deleted_comment_ids:
         await posts_collection.update_many(
             {"comments": {"$in": deleted_comment_ids}},
             {"$pull": {"comments": {"$in": deleted_comment_ids}}}
         )
+        # Delete the actual comments from the collection
+        await comments_collection.delete_many({"userId": obj_id})
 
-    # 4️⃣ Quitar likes del usuario en posts existentes
+    #  Quitar likes del usuario en posts existentes
     await posts_collection.update_many(
-        {"likes": user["id"]},
-        {"$pull": {"likes": user["id"]}}
+        {"likes": {"$in": [obj_id, user["id"]]}},
+        {"$pull": {"likes": {"$in": [obj_id, user["id"]]}}}
     )
 
-    # 5️⃣ Eliminar posts del usuario
+    #  Eliminar posts del usuario
     await posts_collection.delete_many({"userId": obj_id})
 
-    # 6️⃣ Limpiar posts de otros usuarios que quedaron vacíos de interacción
-    await posts_collection.delete_many({
-        "$and": [
-            {"comments": {"$size": 0}},
-            {"likes": {"$size": 0}}
-        ]
-    })
-
-    # 7️⃣ Eliminar al usuario
+    #  Eliminar al usuario
     await users_collection.delete_one({"_id": obj_id})
 
     request.session.clear()
@@ -599,33 +621,6 @@ async def get_comments(post_id: str):
 
     return JSONResponse(comments)
 
-"""
-@app.post("/delete-my-comment/{commentid}")
-async def delcom(request: Request, commentid: str):
-    user = request.session.get("user")
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-
-    objcomm = ObjectId(commentid)
-    objuser = ObjectId(user["id"])
-
-    # 1️⃣ Buscar comentario
-    comment = await comments_collection.find_one({"_id": objcomm})
-
-    if not comment or comment["userId"] != objuser:
-        raise HTTPException(status_code=403, detail="No autorizado")
-
-    # 2️⃣ Eliminar comentario
-    await comments_collection.delete_one({"_id": objcomm})
-
-    # 3️⃣ Quitar referencia del post
-    await posts_collection.update_many(
-        {"comments": objcomm},
-        {"$pull": {"comments": objcomm}}
-    )
-
-    return RedirectResponse("/", status_code=303)
-"""
 # =====================================================
 # ADMIN
 # =====================================================
@@ -696,6 +691,37 @@ async def delete_user(user_id: str, request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="ID inválido")
         
+    # Limpiar de followers/following de otros
+    await users_collection.update_many(
+        {"followers": {"$in": [obj_id, user_id]}},
+        {"$pull": {"followers": {"$in": [obj_id, user_id]}}}
+    )
+    await users_collection.update_many(
+        {"following": {"$in": [obj_id, user_id]}},
+        {"$pull": {"following": {"$in": [obj_id, user_id]}}}
+    )
+
+    # Eliminar comentarios del usuario y guardar IDs
+    deleted_comments_cursor = comments_collection.find({"userId": obj_id}, {"_id": 1})
+    deleted_comment_ids = []
+    async for comment in deleted_comments_cursor:
+        deleted_comment_ids.append(comment["_id"])
+
+    # Limpiar comentarios del usuario en posts existentes
+    if deleted_comment_ids:
+        await posts_collection.update_many(
+            {"comments": {"$in": deleted_comment_ids}},
+            {"$pull": {"comments": {"$in": deleted_comment_ids}}}
+        )
+        # Eliminar los comentarios reales de la colección
+        await comments_collection.delete_many({"userId": obj_id})
+
+    # Quitar likes del usuario en posts existentes
+    await posts_collection.update_many(
+        {"likes": {"$in": [obj_id, user_id]}},
+        {"$pull": {"likes": {"$in": [obj_id, user_id]}}}
+    )
+
     # Borrar posts y usuario
     await posts_collection.delete_many({"userId": obj_id})
     await users_collection.delete_one({"_id": obj_id})
@@ -1063,7 +1089,6 @@ async def feed_load_more(request: Request):
                 "_id": {"$nin": seen_obj_ids}
             })
             other_posts = await cursor_others.to_list(length=None)
-            import random
             random.shuffle(other_posts)
             needed = 20 - len(posts)
             posts.extend(other_posts[:needed])
@@ -1074,7 +1099,6 @@ async def feed_load_more(request: Request):
             "_id": {"$nin": seen_obj_ids}
         })
         other_posts = await cursor_others.to_list(length=None)
-        import random
         random.shuffle(other_posts)
         posts = other_posts[:20]
 
@@ -1086,7 +1110,6 @@ async def feed_load_more(request: Request):
 
     # Enriquecemos posts con username, profile_image y comentarios
     enriched_posts = []
-    from datetime import timezone
     for post in posts:
         post_user = await users_collection.find_one({"_id": post["userId"]})
         if not post_user:
@@ -1153,7 +1176,6 @@ async def view_post(request: Request, post_id: str):
     post["profile_image"] = post_user.get("profile_image")
 
     comment_objects = []
-    from datetime import timezone
     for comment_id in post.get("comments", []):
         comment = await comments_collection.find_one({"_id": comment_id})
         if comment:
